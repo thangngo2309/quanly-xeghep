@@ -1,0 +1,70 @@
+services:
+  postgres:
+    image: postgis/postgis:16-3.4-alpine
+    container_name: quanly-xegh-postgres-prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5432:5432"
+    volumes:
+      - quanly_xegh_postgres_prod_data:/var/lib/postgresql/data
+    networks:
+      - quanly-xegh-network-prod
+
+  redis:
+    image: redis:7-alpine
+    container_name: quanly-xegh-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - quanly_xegh_redis_data:/data
+    networks:
+      - quanly-xegh-network
+
+  be:
+    container_name: quanly-xegh-be-prod
+    build:
+      context: ./be
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+    ports:
+      - "${BE_PORT}:5000"
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - quanly-xegh-network-prod
+
+  admin:
+    container_name: quanly-xegh-admin-prod
+    build:
+      context: ./admin
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+    ports:
+      - "${ADMIN_PORT}:5001"
+    depends_on:
+      - be
+    networks:
+      - quanly-xegh-network-prod
+
+volumes:
+  quanly_xegh_postgres_prod_data:
+  quanly_xegh_redis_prod_data:
+
+networks:
+  quanly-xegh-network-prod:
+    driver: bridge
