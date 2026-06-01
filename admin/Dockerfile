@@ -25,6 +25,6 @@ COPY --from=builder /app/.next ./.next
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/next.config.* ./
 
-EXPOSE 5001
+EXPOSE 6101
 
-CMD ["npm", "run", "start", "--", "-H", "0.0.0.0", "-p", "5001"]
+CMD ["npm", "run", "start", "--", "-H", "0.0.0.0", "-p", "6101"]
