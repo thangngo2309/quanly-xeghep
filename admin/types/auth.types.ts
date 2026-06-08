@@ -5,6 +5,7 @@ export type AuthUser = {
     email?: string | null;
     role: string;
     status: string;
+    companyId?: string | null;
   };
   
   export type SigninPayload = {

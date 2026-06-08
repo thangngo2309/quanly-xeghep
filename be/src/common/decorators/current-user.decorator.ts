@@ -5,6 +5,7 @@ export type CurrentUserData = {
   userId: string;
   phone: string;
   role: UserRole;
+  companyId: string | null;
 };
 
 export const CurrentUser = createParamDecorator(

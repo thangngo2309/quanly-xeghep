@@ -29,6 +29,8 @@ import {
   type UserFormValues,
 } from "./components/UserFormDialog";
 import { AdminLayout } from "../layouts/admin";
+import { getAuthUser } from "@/helper/auth-storage";
+import { getCompaniesApi } from "@/api/companies.api";
 
 type UserSearchForm = {
   keyword: string;
@@ -163,6 +165,14 @@ export default function UsersPage() {
     },
   });
 
+  const [currentRole, setCurrentRole] = useState<UserRole | null>(null);
+  const [companyOptions, setCompanyOptions] = useState<
+    Array<{
+      label: string;
+      value: string;
+    }>
+  >([]);
+
   const [rows, setRows] = useState<UserItem[]>([]);
   const [rowCount, setRowCount] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -190,6 +200,30 @@ export default function UsersPage() {
   const [selectedUser, setSelectedUser] = useState<UserItem | null>(null);
   const [formLoading, setFormLoading] = useState(false);
 
+  const loadCompanyOptions = useCallback(async () => {
+    try {
+      const data = await getCompaniesApi({
+        page: 1,
+        limit: 100,
+        status: 'ACTIVE',
+        sortBy: 'name',
+        sortOrder: 'asc',
+      });
+  
+      setCompanyOptions(
+        data.items.map((company) => ({
+          label: `${company.name} (${company.code})`,
+          value: company.id,
+        })),
+      );
+    } catch (error) {
+      await dialog.error({
+        title: 'Lỗi tải nhà xe',
+        message: getApiErrorMessage(error),
+      });
+    }
+  }, [currentRole, dialog]);
+
   const loadData = useCallback(async () => {
     setLoading(true);
 
@@ -201,9 +235,9 @@ export default function UsersPage() {
         limit: paginationModel.pageSize,
         sortBy: sort?.field || "createdAt",
         sortOrder: (sort?.sort || "desc") as "asc" | "desc",
-        keyword: searchValues.keyword || "",
-        role: activeRole,
-        status: searchValues.status || "",
+        keyword: searchValues.keyword || undefined,
+        role: currentRole === "ADMIN" ? "DRIVER" : activeRole || undefined,
+        status: searchValues.status || undefined,
       };
 
       const data = await getUsersApi(query);
@@ -231,8 +265,39 @@ export default function UsersPage() {
   ]);
 
   useEffect(() => {
+    const user = getAuthUser();
+
+    const role = user?.role as UserRole | undefined;
+
+    if (role) {
+      setCurrentRole(role);
+
+      if (role === "ADMIN") {
+        setActiveRole("DRIVER");
+      }
+    }
+  }, []);
+
+  useEffect(() => {
     loadData();
   }, [loadData]);
+
+  useEffect(() => {
+    loadCompanyOptions();
+  }, [loadCompanyOptions]);
+
+  const visibleRoleTabs = useMemo(() => {
+    if (currentRole === "ADMIN") {
+      return [
+        {
+          label: "Tài xế",
+          value: "DRIVER" as UserRole,
+        },
+      ];
+    }
+
+    return roleTabs;
+  }, [currentRole]);
 
   const columns = useMemo<GridColDef<UserItem>[]>(
     () => [
@@ -265,6 +330,20 @@ export default function UsersPage() {
             color={params.value === "SUPER_ADMIN" ? "primary" : "default"}
           />
         ),
+      },
+      {
+        field: 'company',
+        headerName: 'Nhà xe',
+        flex: 1,
+        minWidth: 200,
+        sortable: false,
+        renderCell: (params) => {
+          const company = params.row.company;
+      
+          if (!company) return '-';
+      
+          return `${company.name} (${company.code})`;
+        },
       },
       {
         field: "status",
@@ -426,8 +505,12 @@ export default function UsersPage() {
           phone: values.phone,
           email: values.email || undefined,
           password: values.password,
-          role: values.role,
+          role: currentRole === "ADMIN" ? "DRIVER" : values.role,
           status: values.status,
+          companyId:
+            currentRole === "SUPER_ADMIN" && values.role !== "SUPER_ADMIN"
+              ? values.companyId
+              : undefined,
         };
 
         await createUserApi(payload);
@@ -436,8 +519,12 @@ export default function UsersPage() {
           fullName: values.fullName,
           phone: values.phone,
           email: values.email || undefined,
-          role: values.role,
+          role: currentRole === "ADMIN" ? "DRIVER" : values.role,
           status: values.status,
+          companyId:
+            currentRole === "SUPER_ADMIN" && values.role !== "SUPER_ADMIN"
+              ? values.companyId
+              : undefined,
         };
 
         if (values.password) {
@@ -497,7 +584,7 @@ export default function UsersPage() {
             variant="scrollable"
             scrollButtons="auto"
           >
-            {roleTabs.map((tab) => (
+            {visibleRoleTabs.map((tab) => (
               <Tab
                 key={tab.value || "all"}
                 value={tab.value}
@@ -566,6 +653,8 @@ export default function UsersPage() {
           loading={formLoading}
           onClose={() => setFormOpen(false)}
           onSubmit={handleSubmitUserForm}
+          currentRole={currentRole}
+          companyOptions={companyOptions}
         />
       </Box>
     </AdminLayout>

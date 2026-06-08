@@ -6,6 +6,7 @@ import {
   IsInt,
   IsOptional,
   IsString,
+  IsUUID,
   Max,
   Min,
 } from 'class-validator';
@@ -69,6 +70,12 @@ export class ListUsersQueryDto {
   @IsOptional()
   @IsEnum(UserStatus)
   status?: UserStatus;
+
+  @ApiPropertyOptional({ example: 'uuid-company-id' })
+  @Transform(({ value }) => emptyToUndefined(value))
+  @IsOptional()
+  @IsUUID()
+  companyId?: string;
 
   @ApiPropertyOptional({ example: 'createdAt' })
   @Transform(({ value }) => emptyToUndefined(value))

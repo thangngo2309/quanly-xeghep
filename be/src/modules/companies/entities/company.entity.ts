@@ -1,9 +1,11 @@
 import { CompanyStatus } from 'src/enums/company-status.enum';
+import { User } from 'src/modules/users/entities/user.entity';
 import {
     Column,
     CreateDateColumn,
     Entity,
     Index,
+    OneToMany,
     PrimaryGeneratedColumn,
     UpdateDateColumn,
   } from 'typeorm';
@@ -74,6 +76,9 @@ import {
       nullable: true,
     })
     note: string | null;
+
+    @OneToMany(() => User, (user) => user.company)
+    users: User[];
   
     @CreateDateColumn({
       name: 'created_at',

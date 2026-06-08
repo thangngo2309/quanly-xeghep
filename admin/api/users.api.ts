@@ -10,6 +10,11 @@ export type UserItem = {
   email?: string | null;
   role: UserRole;
   status: UserStatus;
+  company?: {
+    id: string;
+    code: string;
+    name: string;
+  } | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -22,6 +27,7 @@ export type UserListQuery = {
   keyword?: string;
   role?: UserRole | '';
   status?: UserStatus | '';
+  companyId?: string;
 };
 
 export type UserListResponse = {
@@ -39,6 +45,7 @@ export type CreateUserPayload = {
   password: string;
   role: UserRole;
   status?: UserStatus;
+  companyId?: string;
 };
 
 export type UpdateUserPayload = {
@@ -48,6 +55,7 @@ export type UpdateUserPayload = {
   password?: string;
   role?: UserRole;
   status?: UserStatus;
+  companyId?: string;
 };
 
 export async function getUsersApi(query: UserListQuery) {

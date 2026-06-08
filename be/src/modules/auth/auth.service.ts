@@ -157,6 +157,7 @@ export class AuthService {
       sub: user.id,
       phone: user.phone,
       role: user.role,
+      companyId: user.companyId || null,
     };
   
     const accessSecret =

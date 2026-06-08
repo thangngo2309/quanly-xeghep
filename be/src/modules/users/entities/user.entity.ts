@@ -1,9 +1,12 @@
 import { UserRole, UserStatus } from 'src/enums/user.enums';
+import { Company } from 'src/modules/companies/entities/company.entity';
 import {
   Column,
   CreateDateColumn,
   Entity,
   Index,
+  JoinColumn,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -63,6 +66,23 @@ export class User {
     default: UserStatus.ACTIVE,
   })
   status: UserStatus;
+
+  @Index()
+  @Column({
+    name: 'company_id',
+    type: 'uuid',
+    nullable: true,
+  })
+  companyId: string | null;
+
+  @ManyToOne(() => Company, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({
+    name: 'company_id',
+  })
+  company: Company | null;
 
   @Column({
     name: 'last_login_at',

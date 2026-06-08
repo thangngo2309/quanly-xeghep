@@ -2,9 +2,9 @@
 
 import { useEffect } from 'react';
 import { SubmitHandler, useForm } from 'react-hook-form';
+import { HFormDialog } from '@/components/dialog';
 import { HDropdown, HInput } from '@/components/form';
 import type { UserItem, UserRole, UserStatus } from '@/api/users.api';
-import { HFormDialog } from '@/components/dialog';
 
 export type UserFormValues = {
   fullName: string;
@@ -13,6 +13,12 @@ export type UserFormValues = {
   password: string;
   role: UserRole;
   status: UserStatus;
+  companyId: string;
+};
+
+export type CompanyOption = {
+  label: string;
+  value: string;
 };
 
 type UserFormDialogProps = {
@@ -20,6 +26,8 @@ type UserFormDialogProps = {
   mode: 'add' | 'edit';
   initialValues?: UserItem | null;
   loading?: boolean;
+  currentRole?: UserRole | null;
+  companyOptions?: CompanyOption[];
   onClose: () => void;
   onSubmit: SubmitHandler<UserFormValues>;
 };
@@ -31,6 +39,7 @@ const defaultValues: UserFormValues = {
   password: '',
   role: 'ADMIN',
   status: 'ACTIVE',
+  companyId: '',
 };
 
 export function UserFormDialog({
@@ -38,12 +47,18 @@ export function UserFormDialog({
   mode,
   initialValues,
   loading,
+  currentRole,
+  companyOptions = [],
   onClose,
   onSubmit,
 }: UserFormDialogProps) {
   const methods = useForm<UserFormValues>({
     defaultValues,
   });
+
+  const watchedRole = methods.watch('role');
+  const isCompanyAdmin = currentRole === 'ADMIN';
+  const shouldShowCompany = !isCompanyAdmin && watchedRole !== 'SUPER_ADMIN';
 
   useEffect(() => {
     if (!open) return;
@@ -54,15 +69,26 @@ export function UserFormDialog({
         phone: initialValues.phone || '',
         email: initialValues.email || '',
         password: '',
-        role: initialValues.role,
+        role: isCompanyAdmin ? 'DRIVER' : initialValues.role,
         status: initialValues.status,
+        companyId: initialValues.company?.id || '',
       });
 
       return;
     }
 
-    methods.reset(defaultValues);
-  }, [open, mode, initialValues, methods]);
+    methods.reset({
+      ...defaultValues,
+      role: isCompanyAdmin ? 'DRIVER' : 'ADMIN',
+      companyId: '',
+    });
+  }, [open, mode, initialValues, methods, isCompanyAdmin]);
+
+  useEffect(() => {
+    if (watchedRole === 'SUPER_ADMIN') {
+      methods.setValue('companyId', '');
+    }
+  }, [watchedRole, methods]);
 
   return (
     <HFormDialog<UserFormValues>
@@ -71,7 +97,7 @@ export function UserFormDialog({
       title={mode === 'add' ? 'Thêm người dùng' : 'Cập nhật người dùng'}
       description={
         mode === 'add'
-          ? 'Tạo tài khoản cho Super Admin, Admin nhà xe hoặc tài xế.'
+          ? 'Tạo tài khoản cho System Admin, Admin nhà xe hoặc tài xế.'
           : 'Cập nhật thông tin tài khoản người dùng.'
       }
       methods={methods}
@@ -103,27 +129,44 @@ export function UserFormDialog({
         type="email"
       />
 
-      <HDropdown<UserFormValues>
-        name="role"
-        label="Vai trò"
-        options={[
-          {
-            label: 'Super Admin',
-            value: 'SUPER_ADMIN',
-          },
-          {
-            label: 'Admin',
-            value: 'ADMIN',
-          },
-          {
-            label: 'Tài xế',
-            value: 'DRIVER',
-          },
-        ]}
-        rules={{
-          required: 'Vui lòng chọn vai trò',
-        }}
-      />
+      {isCompanyAdmin ? (
+        <HDropdown<UserFormValues>
+          name="role"
+          label="Vai trò"
+          disabled
+          options={[
+            {
+              label: 'Tài xế',
+              value: 'DRIVER',
+            },
+          ]}
+          rules={{
+            required: 'Vui lòng chọn vai trò',
+          }}
+        />
+      ) : (
+        <HDropdown<UserFormValues>
+          name="role"
+          label="Vai trò"
+          options={[
+            {
+              label: 'System Admin',
+              value: 'SUPER_ADMIN',
+            },
+            {
+              label: 'Admin nhà xe',
+              value: 'ADMIN',
+            },
+            {
+              label: 'Tài xế',
+              value: 'DRIVER',
+            },
+          ]}
+          rules={{
+            required: 'Vui lòng chọn vai trò',
+          }}
+        />
+      )}
 
       <HDropdown<UserFormValues>
         name="status"
@@ -146,6 +189,30 @@ export function UserFormDialog({
           required: 'Vui lòng chọn trạng thái',
         }}
       />
+
+      {shouldShowCompany && (
+        <HDropdown<UserFormValues>
+          name="companyId"
+          label="Nhà xe"
+          placeholder="Chọn nhà xe"
+          options={companyOptions}
+          disabled={companyOptions.length === 0}
+          helperText={
+            companyOptions.length === 0
+              ? 'Chưa có nhà xe hoạt động để chọn'
+              : undefined
+          }
+          rules={{
+            required: 'Vui lòng chọn nhà xe',
+          }}
+          sx={{
+            gridColumn: {
+              xs: 'auto',
+              md: '1 / -1',
+            },
+          }}
+        />
+      )}
 
       <HInput<UserFormValues>
         name="password"
