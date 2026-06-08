@@ -1,27 +1,30 @@
-'use client';
+"use client";
 
-import { CssBaseline, ThemeProvider, createTheme } from '@mui/material';
-import { ReactNode } from 'react';
+import { CssBaseline, ThemeProvider, createTheme } from "@mui/material";
+import { ReactNode } from "react";
+import { LocalizationProvider } from "@mui/x-date-pickers";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
+import { HDialogProvider } from "@/components/dialog";
 
 const theme = createTheme({
   palette: {
-    mode: 'light',
+    mode: "light",
     primary: {
-      main: '#0f766e',
+      main: "#0f766e",
     },
     secondary: {
-      main: '#2563eb',
+      main: "#2563eb",
     },
     background: {
-      default: '#f3f6f8',
-      paper: '#ffffff',
+      default: "#f3f6f8",
+      paper: "#ffffff",
     },
   },
   shape: {
     borderRadius: 14,
   },
   typography: {
-    fontFamily: 'Roboto, Arial, sans-serif',
+    fontFamily: "Roboto, Arial, sans-serif",
     h4: {
       fontWeight: 800,
     },
@@ -29,7 +32,7 @@ const theme = createTheme({
       fontWeight: 800,
     },
     button: {
-      textTransform: 'none',
+      textTransform: "none",
       fontWeight: 700,
     },
   },
@@ -37,14 +40,14 @@ const theme = createTheme({
     MuiButton: {
       styleOverrides: {
         root: {
-          boxShadow: 'none',
+          boxShadow: "none",
         },
       },
     },
     MuiTextField: {
       defaultProps: {
-        variant: 'outlined',
-        size: 'medium',
+        variant: "outlined",
+        size: "medium",
       },
     },
   },
@@ -53,8 +56,12 @@ const theme = createTheme({
 export default function Providers({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider theme={theme}>
-      <CssBaseline />
-      {children}
+      <LocalizationProvider dateAdapter={AdapterDayjs}>
+        <HDialogProvider>
+          <CssBaseline />
+          {children}
+        </HDialogProvider>
+      </LocalizationProvider>
     </ThemeProvider>
   );
 }
