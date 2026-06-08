@@ -125,6 +125,7 @@ export function HFormDialog<T extends FieldValues>({
           }}
         >
           <Typography
+            component="div"
             variant="h6"
             sx={{
               fontWeight: 800,

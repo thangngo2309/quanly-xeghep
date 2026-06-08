@@ -47,7 +47,7 @@ export class UsersService {
       email: dto.email || null,
       passwordHash,
       role: dto.role || UserRole.ADMIN,
-      status: UserStatus.ACTIVE,
+      status: dto.status || UserStatus.ACTIVE,
     });
 
     const savedUser = await this.userRepository.save(user);
@@ -145,6 +145,10 @@ export class UsersService {
       if (existedEmail) {
         throw new ConflictException('Email đã tồn tại');
       }
+    }
+
+    if (dto.status !== undefined) {
+      user.status = dto.status;
     }
 
     if (dto.fullName !== undefined) {

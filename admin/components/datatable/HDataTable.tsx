@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import SearchIcon from "@mui/icons-material/Search";
-import RefreshIcon from "@mui/icons-material/Refresh";
+import RefreshIcon from '@mui/icons-material/Refresh';
+import SearchIcon from '@mui/icons-material/Search';
 import {
   Box,
   Button,
@@ -12,7 +12,7 @@ import {
   Typography,
   type SxProps,
   type Theme,
-} from "@mui/material";
+} from '@mui/material';
 import {
   DataGrid,
   type DataGridProps,
@@ -21,17 +21,17 @@ import {
   type GridRowIdGetter,
   type GridSortModel,
   type GridValidRowModel,
-} from "@mui/x-data-grid";
+} from '@mui/x-data-grid';
 import type {
   FieldValues,
   SubmitHandler,
   UseFormReturn,
-} from "react-hook-form";
-import { HForm } from "@/components/form";
+} from 'react-hook-form';
+import { HForm } from '@/components/form';
 
 type HDataTableProps<
   TRow extends GridValidRowModel,
-  TSearch extends FieldValues = FieldValues
+  TSearch extends FieldValues = FieldValues,
 > = {
   title?: string;
   description?: string;
@@ -59,14 +59,21 @@ type HDataTableProps<
   actions?: React.ReactNode;
   onRefresh?: () => void;
 
-  height?: number | string;
+  /**
+   * Nếu không truyền height, table sẽ tự tính theo số dòng.
+   * Nếu muốn cố định chiều cao thì truyền height={520}
+   */
+  height?: number;
+  minHeight?: number;
+  maxHeight?: number;
+
   sx?: SxProps<Theme>;
   dataGridProps?: Partial<DataGridProps<TRow>>;
 };
 
 export function HDataTable<
   TRow extends GridValidRowModel,
-  TSearch extends FieldValues = FieldValues
+  TSearch extends FieldValues = FieldValues,
 >({
   title,
   description,
@@ -94,12 +101,25 @@ export function HDataTable<
   actions,
   onRefresh,
 
-  height = 620,
+  height,
+  minHeight = 260,
+  maxHeight = 520,
+
   sx,
   dataGridProps,
 }: HDataTableProps<TRow, TSearch>) {
   const hasHeader = title || description || actions || onRefresh;
   const hasSearch = searchMethods && onSearch && searchContent;
+
+  const calculatedHeight =
+    height ??
+    Math.min(
+      maxHeight,
+      Math.max(
+        minHeight,
+        56 + Math.max(rows.length, 1) * 52 + 56 + 18,
+      ),
+    );
 
   function handleResetSearch() {
     searchMethods?.reset();
@@ -110,28 +130,28 @@ export function HDataTable<
     <Card
       elevation={0}
       sx={{
-        border: "1px solid",
-        borderColor: "divider",
+        border: '1px solid',
+        borderColor: 'divider',
         borderRadius: 3,
-        overflow: "hidden",
+        overflow: 'hidden',
         ...sx,
       }}
     >
       {hasHeader && (
         <>
-          <CardContent sx={{ pb: 2 }}>
+          <CardContent sx={{ py: 2.5 }}>
             <Stack
               spacing={2}
               sx={{
                 flexDirection: {
-                  xs: "column",
-                  md: "row",
+                  xs: 'column',
+                  md: 'row',
                 },
                 alignItems: {
-                  xs: "stretch",
-                  md: "center",
+                  xs: 'stretch',
+                  md: 'center',
                 },
-                justifyContent: "space-between",
+                justifyContent: 'space-between',
               }}
             >
               <Box>
@@ -152,14 +172,15 @@ export function HDataTable<
                 )}
               </Box>
 
-              <Stack
-                spacing={1}
+              <Box
                 sx={{
-                  flexDirection: "row",
+                  display: 'flex',
+                  gap: 1,
                   justifyContent: {
-                    xs: "flex-start",
-                    md: "flex-end",
+                    xs: 'flex-start',
+                    md: 'flex-end',
                   },
+                  flexWrap: 'wrap',
                 }}
               >
                 {onRefresh && (
@@ -174,7 +195,7 @@ export function HDataTable<
                 )}
 
                 {actions}
-              </Stack>
+              </Box>
             </Stack>
           </CardContent>
 
@@ -184,28 +205,34 @@ export function HDataTable<
 
       {hasSearch && (
         <>
-          <CardContent>
+          <CardContent sx={{ py: 2.5 }}>
             <HForm methods={searchMethods} onSubmit={onSearch}>
-              <Stack spacing={2}>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: {
+                    xs: '1fr',
+                    sm: 'repeat(2, minmax(0, 1fr))',
+                    md: 'repeat(4, minmax(0, 1fr))',
+                  },
+                  gap: 2,
+                  alignItems: 'center',
+                }}
+              >
+                {searchContent}
+
                 <Box
                   sx={{
-                    display: "grid",
-                    gridTemplateColumns: {
-                      xs: "1fr",
-                      sm: "repeat(2, minmax(0, 1fr))",
-                      md: "repeat(4, minmax(0, 1fr))",
+                    display: 'flex',
+                    gap: 1,
+                    justifyContent: {
+                      xs: 'flex-start',
+                      md: 'flex-end',
                     },
-                    gap: 2,
-                  }}
-                >
-                  {searchContent}
-                </Box>
-
-                <Stack
-                  spacing={1}
-                  sx={{
-                    flexDirection: "row",
-                    justifyContent: "flex-end",
+                    gridColumn: {
+                      xs: '1 / -1',
+                      md: 'auto / span 2',
+                    },
                   }}
                 >
                   {onResetSearch && (
@@ -226,8 +253,8 @@ export function HDataTable<
                   >
                     Tìm kiếm
                   </Button>
-                </Stack>
-              </Stack>
+                </Box>
+              </Box>
             </HForm>
           </CardContent>
 
@@ -235,7 +262,7 @@ export function HDataTable<
         </>
       )}
 
-      <Box sx={{ height, width: "100%" }}>
+      <Box sx={{ height: calculatedHeight, width: '100%' }}>
         <DataGrid
           rows={rows}
           columns={columns}
@@ -253,10 +280,10 @@ export function HDataTable<
           density="comfortable"
           sx={{
             border: 0,
-            "& .MuiDataGrid-columnHeaders": {
-              bgcolor: "#f8fafc",
+            '& .MuiDataGrid-columnHeaders': {
+              bgcolor: '#f8fafc',
             },
-            "& .MuiDataGrid-columnHeaderTitle": {
+            '& .MuiDataGrid-columnHeaderTitle': {
               fontWeight: 800,
             },
           }}

@@ -1,10 +1,5 @@
 'use client';
 
-import { http } from '@/api/http';
-import { saveAuthData } from '@/helper/auth-storage';
-import DirectionsCarFilledIcon from '@mui/icons-material/DirectionsCarFilled';
-import PhoneIphoneIcon from '@mui/icons-material/PhoneIphone';
-import RouteIcon from '@mui/icons-material/Route';
 import {
   Alert,
   Box,
@@ -15,66 +10,60 @@ import {
   CircularProgress,
   Container,
   Divider,
-  InputAdornment,
   Paper,
   Stack,
-  TextField,
   Typography,
 } from '@mui/material';
 import { useRouter } from 'next/navigation';
-import { FormEvent, useState } from 'react';
+import { ReactNode, useState } from 'react';
+import { SubmitHandler, useForm } from 'react-hook-form';
 
-type LoginResponse = {
-  user: {
-    id: string;
-    fullName: string;
-    phone: string;
-    email?: string | null;
-    role: string;
-    status: string;
-  };
-  accessToken: string;
-  refreshToken: string;
+import { signinApi } from '@/api/auth.api';
+import { getApiErrorMessage } from '@/api/http';
+import { HForm, HInput } from '@/components/form';
+import { saveAuthData } from '@/helper/auth-storage';
+
+type LoginFormValues = {
+  identifier: string;
+  password: string;
 };
 
 export default function LoginPage() {
   const router = useRouter();
 
-  const [identifier, setIdentifier] = useState('');
-  const [password, setPassword] = useState('');
+  const methods = useForm<LoginFormValues>({
+    defaultValues: {
+      identifier: '',
+      password: '',
+    },
+  });
 
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-
+  const handleSubmit: SubmitHandler<LoginFormValues> = async (values) => {
     setErrorMessage('');
     setLoading(true);
 
     try {
-      const response = await http.post<LoginResponse>('/auth/signin', {
-        identifier,
-        password,
+      const data = await signinApi({
+        identifier: values.identifier,
+        password: values.password,
       });
 
       saveAuthData({
-        user: response.data.user,
-        accessToken: response.data.accessToken,
-        refreshToken: response.data.refreshToken,
+        user: data.user,
+        accessToken: data.accessToken,
+        refreshToken: data.refreshToken,
       });
 
       router.push('/');
-    } catch (error: any) {
-      const message =
-        error?.response?.data?.message ||
-        'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.';
-
-      setErrorMessage(Array.isArray(message) ? message[0] : message);
+    } catch (error) {
+      setErrorMessage(getApiErrorMessage(error));
     } finally {
       setLoading(false);
     }
-  }
+  };
 
   return (
     <Box
@@ -148,7 +137,13 @@ export default function LoginPage() {
               />
 
               <Stack spacing={4} sx={{ position: 'relative', zIndex: 1 }}>
-                <Stack direction="row" spacing={1.5} sx={{ alignItems: "center"}}>
+                <Stack
+                  spacing={1.5}
+                  sx={{
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                  }}
+                >
                   <Box
                     sx={{
                       width: 48,
@@ -158,15 +153,18 @@ export default function LoginPage() {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
+                      fontSize: 24,
+                      fontWeight: 900,
                     }}
                   >
-                    <DirectionsCarFilledIcon />
+                    🚗
                   </Box>
 
                   <Box>
                     <Typography variant="h6" sx={{ fontWeight: 800 }}>
                       Xe Ghép Admin
                     </Typography>
+
                     <Typography sx={{ opacity: 0.8 }}>
                       Smart Transport Platform
                     </Typography>
@@ -214,13 +212,13 @@ export default function LoginPage() {
 
                 <Stack spacing={2}>
                   <FeatureItem
-                    icon={<RouteIcon />}
+                    icon="〰"
                     title="Điều phối chuyến"
                     description="Quản lý tuyến, khung giờ, ghế trống và khách cần đưa đón."
                   />
 
                   <FeatureItem
-                    icon={<PhoneIphoneIcon />}
+                    icon="☎"
                     title="Kết nối API"
                     description="Nhà xe gửi booking từ app hoặc website riêng vào hệ thống."
                   />
@@ -265,7 +263,7 @@ export default function LoginPage() {
                 <CardContent sx={{ p: 0 }}>
                   <Stack spacing={3}>
                     <Stack spacing={1}>
-                      <Typography variant="h4">
+                      <Typography variant="h4" sx={{ fontWeight: 800 }}>
                         Đăng nhập
                       </Typography>
 
@@ -280,49 +278,29 @@ export default function LoginPage() {
                       <Alert severity="error">{errorMessage}</Alert>
                     )}
 
-                    <Box component="form" onSubmit={handleSubmit}>
+                    <HForm methods={methods} onSubmit={handleSubmit}>
                       <Stack spacing={2.5}>
-                        <TextField
+                        <HInput<LoginFormValues>
+                          name="identifier"
                           label="Số điện thoại hoặc email"
-                          value={identifier}
-                          onChange={(event) =>
-                            setIdentifier(event.target.value)
-                          }
-                          fullWidth
-                          required
                           autoComplete="username"
-                          slotProps={{
-                            input: {
-                              startAdornment: (
-                                <InputAdornment position="start">
-                                  <PhoneIphoneIcon color="action" />
-                                </InputAdornment>
-                              ),
-                            },
+                          rules={{
+                            required: 'Vui lòng nhập số điện thoại hoặc email',
                           }}
-                        
                         />
 
-                        <TextField
+                        <HInput<LoginFormValues>
+                          name="password"
                           label="Mật khẩu"
                           type="password"
-                          value={password}
-                          onChange={(event) =>
-                            setPassword(event.target.value)
-                          }
-                          fullWidth
-                          required
                           autoComplete="current-password"
-                          slotProps={{
-                            input: {
-                              startAdornment: (
-                                <InputAdornment position="start">
-                                  <PhoneIphoneIcon color="action" />
-                                </InputAdornment>
-                              ),
+                          rules={{
+                            required: 'Vui lòng nhập mật khẩu',
+                            minLength: {
+                              value: 6,
+                              message: 'Mật khẩu tối thiểu 6 ký tự',
                             },
                           }}
-                        
                         />
 
                         <Button
@@ -346,7 +324,7 @@ export default function LoginPage() {
                           )}
                         </Button>
                       </Stack>
-                    </Box>
+                    </HForm>
 
                     <Alert severity="info">
                       Tài khoản đầu tiên sẽ được tạo bằng seed Super Admin khi
@@ -368,15 +346,15 @@ function FeatureItem({
   title,
   description,
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   title: string;
   description: string;
 }) {
   return (
     <Stack
-      direction="row"
       spacing={2}
       sx={{
+        flexDirection: 'row',
         p: 2,
         borderRadius: 3,
         bgcolor: 'rgba(255,255,255,0.12)',
@@ -393,6 +371,8 @@ function FeatureItem({
           alignItems: 'center',
           justifyContent: 'center',
           flexShrink: 0,
+          fontSize: 22,
+          fontWeight: 900,
         }}
       >
         {icon}
@@ -400,6 +380,7 @@ function FeatureItem({
 
       <Box>
         <Typography sx={{ fontWeight: 800 }}>{title}</Typography>
+
         <Typography sx={{ opacity: 0.78, mt: 0.5 }}>
           {description}
         </Typography>

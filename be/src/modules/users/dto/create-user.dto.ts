@@ -7,7 +7,7 @@ import {
   IsString,
   MinLength,
 } from 'class-validator';
-import { UserRole } from 'src/enums/user.enums';
+import { UserRole, UserStatus } from 'src/enums/user.enums';
 
 export class CreateUserDto {
   @ApiProperty({ example: 'Nguyễn Văn A' })
@@ -37,4 +37,12 @@ export class CreateUserDto {
   @IsOptional()
   @IsEnum(UserRole)
   role?: UserRole;
+
+  @ApiPropertyOptional({
+    enum: UserStatus,
+    example: UserStatus.ACTIVE,
+  })
+  @IsOptional()
+  @IsEnum(UserStatus)
+  status?: UserStatus;
 }
