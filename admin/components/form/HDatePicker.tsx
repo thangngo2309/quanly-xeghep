@@ -85,6 +85,16 @@ function formatDateValue(value: Dayjs | null, format: DateValueFormat) {
   }
 }
 
+function isRequiredRule(required: unknown) {
+  if (!required) return false;
+
+  if (typeof required === 'object' && 'value' in required) {
+    return Boolean((required as { value?: unknown }).value);
+  }
+
+  return true;
+}
+
 export function HDatePicker<T extends FieldValues>({
   name,
   label,
@@ -103,6 +113,7 @@ export function HDatePicker<T extends FieldValues>({
   textFieldProps,
 }: HDatePickerProps<T>) {
   const { control } = useFormContext<T>();
+  const isRequired = required || isRequiredRule(rules?.required);
 
   return (
     <Controller
@@ -127,7 +138,7 @@ export function HDatePicker<T extends FieldValues>({
               ...textFieldProps,
               sx,
               fullWidth,
-              required,
+              required: isRequired,
               error: !!fieldState.error,
               helperText: fieldState.error?.message || helperText,
             } as PickerTextFieldSlot,

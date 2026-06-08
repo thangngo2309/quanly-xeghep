@@ -6,6 +6,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './entities/user.entity';
 import { Repository } from 'typeorm'
 import * as bcrypt from 'bcryptjs';
+import { ListUsersQueryDto } from './dto/list-users-query.dto';
 
 type CreateUserByAuthInput = {
   fullName: string;
@@ -70,12 +71,70 @@ export class UsersService {
     return this.findByIdOrFail(savedUser.id);
   }
 
-  findAll() {
-    return this.userRepository.find({
-      order: {
-        createdAt: 'DESC',
-      },
-    });
+  async findAll(query: ListUsersQueryDto) {
+    const page = Number(query.page || 1);
+    const limit = Number(query.limit || 10);
+    const skip = (page - 1) * limit;
+  
+    const sortBy = query.sortBy || 'createdAt';
+    const sortOrder = query.sortOrder || 'desc';
+  
+    const sortColumnMap: Record<string, string> = {
+      fullName: 'user.fullName',
+      phone: 'user.phone',
+      email: 'user.email',
+      role: 'user.role',
+      status: 'user.status',
+      createdAt: 'user.createdAt',
+      updatedAt: 'user.updatedAt',
+      lastLoginAt: 'user.lastLoginAt',
+    };
+  
+    const qb = this.userRepository.createQueryBuilder('user');
+  
+    if (query.keyword) {
+      const keyword = `%${query.keyword}%`;
+  
+      qb.andWhere(
+        `
+        (
+          user.fullName ILIKE :keyword
+          OR user.phone ILIKE :keyword
+          OR user.email ILIKE :keyword
+        )
+        `,
+        { keyword },
+      );
+    }
+  
+    if (query.role) {
+      qb.andWhere('user.role = :role', {
+        role: query.role,
+      });
+    }
+  
+    if (query.status) {
+      qb.andWhere('user.status = :status', {
+        status: query.status,
+      });
+    }
+  
+    qb.orderBy(
+      sortColumnMap[sortBy] || 'user.createdAt',
+      sortOrder.toUpperCase() as 'ASC' | 'DESC',
+    )
+      .skip(skip)
+      .take(limit);
+  
+    const [items, total] = await qb.getManyAndCount();
+  
+    return {
+      items,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
   }
 
   async findOne(id: string) {

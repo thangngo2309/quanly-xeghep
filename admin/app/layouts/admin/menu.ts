@@ -21,7 +21,7 @@ export const adminMenuItems: AdminMenuItem[] = [
     label: 'Người dùng',
     href: '/users',
     icon: '👥',
-    roles: ['SUPER_ADMIN'],
+    roles: ['SUPER_ADMIN', 'ADMIN'],
   },
   {
     key: 'companies',
@@ -29,13 +29,6 @@ export const adminMenuItems: AdminMenuItem[] = [
     href: '/companies',
     icon: '🏢',
     roles: ['SUPER_ADMIN'],
-  },
-  {
-    key: 'drivers',
-    label: 'Tài xế',
-    href: '/drivers',
-    icon: '🚕',
-    roles: ['SUPER_ADMIN', 'ADMIN'],
   },
   {
     key: 'vehicles',
@@ -64,13 +57,6 @@ export const adminMenuItems: AdminMenuItem[] = [
     href: '/bookings',
     icon: '📋',
     roles: ['SUPER_ADMIN', 'ADMIN'],
-  },
-  {
-    key: 'api-clients',
-    label: 'API Clients',
-    href: '/api-clients',
-    icon: '🔑',
-    roles: ['SUPER_ADMIN'],
   },
   {
     key: 'settings',

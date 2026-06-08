@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import RefreshIcon from '@mui/icons-material/Refresh';
-import SearchIcon from '@mui/icons-material/Search';
+import RefreshIcon from "@mui/icons-material/Refresh";
+import SearchIcon from "@mui/icons-material/Search";
 import {
   Box,
   Button,
@@ -12,7 +12,7 @@ import {
   Typography,
   type SxProps,
   type Theme,
-} from '@mui/material';
+} from "@mui/material";
 import {
   DataGrid,
   type DataGridProps,
@@ -21,17 +21,17 @@ import {
   type GridRowIdGetter,
   type GridSortModel,
   type GridValidRowModel,
-} from '@mui/x-data-grid';
+} from "@mui/x-data-grid";
 import type {
   FieldValues,
   SubmitHandler,
   UseFormReturn,
-} from 'react-hook-form';
-import { HForm } from '@/components/form';
+} from "react-hook-form";
+import { HForm } from "@/components/form";
 
 type HDataTableProps<
   TRow extends GridValidRowModel,
-  TSearch extends FieldValues = FieldValues,
+  TSearch extends FieldValues = FieldValues
 > = {
   title?: string;
   description?: string;
@@ -73,7 +73,7 @@ type HDataTableProps<
 
 export function HDataTable<
   TRow extends GridValidRowModel,
-  TSearch extends FieldValues = FieldValues,
+  TSearch extends FieldValues = FieldValues
 >({
   title,
   description,
@@ -115,10 +115,7 @@ export function HDataTable<
     height ??
     Math.min(
       maxHeight,
-      Math.max(
-        minHeight,
-        56 + Math.max(rows.length, 1) * 52 + 56 + 18,
-      ),
+      Math.max(minHeight, 56 + Math.max(rows.length, 1) * 52 + 56 + 18)
     );
 
   function handleResetSearch() {
@@ -130,33 +127,33 @@ export function HDataTable<
     <Card
       elevation={0}
       sx={{
-        border: '1px solid',
-        borderColor: 'divider',
+        border: "1px solid",
+        borderColor: "divider",
         borderRadius: 3,
-        overflow: 'hidden',
+        overflow: "hidden",
         ...sx,
       }}
     >
       {hasHeader && (
         <>
-          <CardContent sx={{ py: 2.5 }}>
+          <CardContent sx={{ py: 2 }}>
             <Stack
               spacing={2}
               sx={{
                 flexDirection: {
-                  xs: 'column',
-                  md: 'row',
+                  xs: "column",
+                  md: "row",
                 },
                 alignItems: {
-                  xs: 'stretch',
-                  md: 'center',
+                  xs: "stretch",
+                  md: "center",
                 },
-                justifyContent: 'space-between',
+                justifyContent: "space-between",
               }}
             >
               <Box>
                 {title && (
-                  <Typography variant="h6" sx={{ fontWeight: 800 }}>
+                  <Typography variant="h6" sx={{ fontWeight: 800, fontSize: 20 }}>
                     {title}
                   </Typography>
                 )}
@@ -174,13 +171,13 @@ export function HDataTable<
 
               <Box
                 sx={{
-                  display: 'flex',
+                  display: "flex",
                   gap: 1,
                   justifyContent: {
-                    xs: 'flex-start',
-                    md: 'flex-end',
+                    xs: "flex-start",
+                    md: "flex-end",
                   },
-                  flexWrap: 'wrap',
+                  flexWrap: "wrap",
                 }}
               >
                 {onRefresh && (
@@ -205,33 +202,54 @@ export function HDataTable<
 
       {hasSearch && (
         <>
-          <CardContent sx={{ py: 2.5 }}>
+          <CardContent sx={{ py: 1.75 }}>
             <HForm methods={searchMethods} onSubmit={onSearch}>
               <Box
                 sx={{
-                  display: 'grid',
-                  gridTemplateColumns: {
-                    xs: '1fr',
-                    sm: 'repeat(2, minmax(0, 1fr))',
-                    md: 'repeat(4, minmax(0, 1fr))',
+                  display: "flex",
+                  alignItems: {
+                    xs: "stretch",
+                    md: "flex-start",
                   },
-                  gap: 2,
-                  alignItems: 'center',
+                  justifyContent: "space-between",
+                  gap: 1.5,
+                  flexDirection: {
+                    xs: "column",
+                    md: "row",
+                  },
                 }}
               >
-                {searchContent}
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 1.5,
+                    flex: 1,
+                    minWidth: 0,
+                    "& > *": {
+                      width: {
+                        xs: "100%",
+                        sm: 280,
+                        md: 300,
+                      },
+                    },
+                  }}
+                >
+                  {searchContent}
+                </Box>
 
                 <Box
                   sx={{
-                    display: 'flex',
+                    display: "flex",
                     gap: 1,
                     justifyContent: {
-                      xs: 'flex-start',
-                      md: 'flex-end',
+                      xs: "flex-start",
+                      md: "flex-end",
                     },
-                    gridColumn: {
-                      xs: '1 / -1',
-                      md: 'auto / span 2',
+                    flexShrink: 0,
+                    pt: {
+                      xs: 0,
+                      md: 0,
                     },
                   }}
                 >
@@ -240,6 +258,10 @@ export function HDataTable<
                       variant="outlined"
                       onClick={handleResetSearch}
                       disabled={loading}
+                      size="medium"
+                      sx={{
+                        minWidth: 100,
+                      }}
                     >
                       Xóa lọc
                     </Button>
@@ -250,6 +272,10 @@ export function HDataTable<
                     variant="contained"
                     startIcon={<SearchIcon />}
                     disabled={loading}
+                    size="medium"
+                    sx={{
+                      minWidth: 120,
+                    }}
                   >
                     Tìm kiếm
                   </Button>
@@ -262,7 +288,7 @@ export function HDataTable<
         </>
       )}
 
-      <Box sx={{ height: calculatedHeight, width: '100%' }}>
+      <Box sx={{ height: calculatedHeight, width: "100%" }}>
         <DataGrid
           rows={rows}
           columns={columns}
@@ -280,10 +306,10 @@ export function HDataTable<
           density="comfortable"
           sx={{
             border: 0,
-            '& .MuiDataGrid-columnHeaders': {
-              bgcolor: '#f8fafc',
+            "& .MuiDataGrid-columnHeaders": {
+              bgcolor: "#f8fafc",
             },
-            '& .MuiDataGrid-columnHeaderTitle': {
+            "& .MuiDataGrid-columnHeaderTitle": {
               fontWeight: 800,
             },
           }}

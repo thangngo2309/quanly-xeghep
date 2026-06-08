@@ -1,10 +1,6 @@
 'use client';
 
-import {
-  MenuItem,
-  TextField,
-  type TextFieldProps,
-} from '@mui/material';
+import { MenuItem, TextField, type TextFieldProps } from '@mui/material';
 import {
   Controller,
   FieldValues,
@@ -29,6 +25,16 @@ type HDropdownProps<T extends FieldValues> = Omit<
   placeholder?: string;
 };
 
+function isRequiredRule(required: unknown) {
+  if (!required) return false;
+
+  if (typeof required === 'object' && 'value' in required) {
+    return Boolean((required as { value?: unknown }).value);
+  }
+
+  return true;
+}
+
 export function HDropdown<T extends FieldValues>({
   name,
   rules,
@@ -36,9 +42,13 @@ export function HDropdown<T extends FieldValues>({
   placeholder = 'Chọn',
   helperText,
   fullWidth = true,
+  size = 'small',
+  required,
   ...props
 }: HDropdownProps<T>) {
   const { control } = useFormContext<T>();
+
+  const isRequired = required || isRequiredRule(rules?.required);
 
   return (
     <Controller
@@ -50,8 +60,10 @@ export function HDropdown<T extends FieldValues>({
           {...field}
           {...props}
           select
+          size={size}
           value={field.value ?? ''}
           fullWidth={fullWidth}
+          required={isRequired}
           error={!!fieldState.error}
           helperText={fieldState.error?.message || helperText}
         >

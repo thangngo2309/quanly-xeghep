@@ -15,6 +15,7 @@ import {
   ReactNode,
   useCallback,
   useContext,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -48,7 +49,7 @@ type HDialogContextValue = {
   warning: (options: HDialogOptions) => Promise<boolean>;
   error: (options: HDialogOptions) => Promise<boolean>;
   close: () => void;
-};
+};  
 
 const HDialogContext = createContext<HDialogContextValue | null>(null);
 
@@ -198,13 +199,16 @@ export function HDialogProvider({ children }: { children: ReactNode }) {
 
   const dialogStyle = getDialogStyle(dialog.variant);
 
-  const value: HDialogContextValue = {
-    confirm: (options) => openDialog('confirm', options, false),
-    info: (options) => openDialog('info', options, true),
-    warning: (options) => openDialog('warning', options, true),
-    error: (options) => openDialog('error', options, true),
-    close: closeDialog,
-  };
+  const value = useMemo<HDialogContextValue>(
+    () => ({
+      confirm: (options) => openDialog('confirm', options, false),
+      info: (options) => openDialog('info', options, true),
+      warning: (options) => openDialog('warning', options, true),
+      error: (options) => openDialog('error', options, true),
+      close: closeDialog,
+    }),
+    [openDialog, closeDialog],
+  );
 
   return (
     <HDialogContext.Provider value={value}>

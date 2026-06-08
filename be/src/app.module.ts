@@ -6,6 +6,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SeedsModule } from './database/seeds/seeds.module';
+import { CompaniesModule } from './modules/companies/companies.module';
 
 @Module({
   imports: [
@@ -25,7 +26,8 @@ import { SeedsModule } from './database/seeds/seeds.module';
     }),
     UsersModule, 
     AuthModule,
-    SeedsModule
+    SeedsModule,
+    CompaniesModule
   ],
   controllers: [AppController],
   providers: [AppService],

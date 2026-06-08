@@ -17,14 +17,28 @@ type HInputProps<T extends FieldValues> = Omit<
   rules?: RegisterOptions<T, Path<T>>;
 };
 
+function isRequiredRule(required: unknown) {
+  if (!required) return false;
+
+  if (typeof required === 'object' && 'value' in required) {
+    return Boolean((required as { value?: unknown }).value);
+  }
+
+  return true;
+}
+
 export function HInput<T extends FieldValues>({
   name,
   rules,
   helperText,
   fullWidth = true,
+  size = 'small',
+  required,
   ...props
 }: HInputProps<T>) {
   const { control } = useFormContext<T>();
+
+  const isRequired = required || isRequiredRule(rules?.required);
 
   return (
     <Controller
@@ -37,6 +51,8 @@ export function HInput<T extends FieldValues>({
           {...props}
           value={field.value ?? ''}
           fullWidth={fullWidth}
+          size={size}
+          required={isRequired}
           error={!!fieldState.error}
           helperText={fieldState.error?.message || helperText}
         />
