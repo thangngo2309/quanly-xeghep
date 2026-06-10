@@ -8,6 +8,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { SeedsModule } from './database/seeds/seeds.module';
 import { CompaniesModule } from './modules/companies/companies.module';
 import { VehiclesModule } from './modules/vehicles/vehicles.module';
+import { RoutesModule } from './modules/routes/routes.module';
 
 @Module({
   imports: [
@@ -29,7 +30,8 @@ import { VehiclesModule } from './modules/vehicles/vehicles.module';
     AuthModule,
     SeedsModule,
     CompaniesModule,
-    VehiclesModule
+    VehiclesModule,
+    RoutesModule
   ],
   controllers: [AppController],
   providers: [AppService],
