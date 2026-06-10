@@ -28,6 +28,7 @@ import type {
   UseFormReturn,
 } from "react-hook-form";
 import { HForm } from "@/components/form";
+import { useCallback } from "react";
 
 type HDataTableProps<
   TRow extends GridValidRowModel,
@@ -70,6 +71,28 @@ type HDataTableProps<
   sx?: SxProps<Theme>;
   dataGridProps?: Partial<DataGridProps<TRow>>;
 };
+
+function isSamePaginationModel(
+  current: GridPaginationModel,
+  next: GridPaginationModel
+) {
+  return current.page === next.page && current.pageSize === next.pageSize;
+}
+
+function isSameSortModel(current?: GridSortModel, next?: GridSortModel) {
+  const currentItem = current?.[0];
+  const nextItem = next?.[0];
+
+  return (
+    currentItem?.field === nextItem?.field &&
+    currentItem?.sort === nextItem?.sort &&
+    (current?.length || 0) === (next?.length || 0)
+  );
+}
+
+function deferCallback(callback: () => void) {
+  setTimeout(callback, 0);
+}
 
 export function HDataTable<
   TRow extends GridValidRowModel,
@@ -123,6 +146,36 @@ export function HDataTable<
     onResetSearch?.();
   }
 
+  const handleDataGridPaginationModelChange = useCallback(
+    (model: GridPaginationModel) => {
+      if (isSamePaginationModel(paginationModel, model)) {
+        return;
+      }
+
+      deferCallback(() => {
+        onPaginationModelChange(model);
+      });
+    },
+    [paginationModel, onPaginationModelChange]
+  );
+
+  const handleDataGridSortModelChange = useCallback(
+    (model: GridSortModel) => {
+      if (!onSortModelChange) {
+        return;
+      }
+
+      if (isSameSortModel(sortModel, model)) {
+        return;
+      }
+
+      deferCallback(() => {
+        onSortModelChange(model);
+      });
+    },
+    [sortModel, onSortModelChange]
+  );
+
   return (
     <Card
       elevation={0}
@@ -153,7 +206,10 @@ export function HDataTable<
             >
               <Box>
                 {title && (
-                  <Typography variant="h6" sx={{ fontWeight: 800, fontSize: 20 }}>
+                  <Typography
+                    variant="h6"
+                    sx={{ fontWeight: 800, fontSize: 20 }}
+                  >
                     {title}
                   </Typography>
                 )}
@@ -298,9 +354,9 @@ export function HDataTable<
           paginationMode="server"
           sortingMode="server"
           paginationModel={paginationModel}
-          onPaginationModelChange={onPaginationModelChange}
+          onPaginationModelChange={handleDataGridPaginationModelChange}
           sortModel={sortModel}
-          onSortModelChange={onSortModelChange}
+          onSortModelChange={handleDataGridSortModelChange}
           pageSizeOptions={pageSizeOptions}
           disableRowSelectionOnClick
           density="comfortable"

@@ -209,3 +209,17 @@ export function getApiErrorMessage(error: unknown) {
 
   return 'Có lỗi xảy ra. Vui lòng thử lại.';
 }
+
+export function cleanParams<T extends Record<string, any>>(params: T) {
+  const cleaned: Record<string, any> = {};
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null || value === '') {
+      return;
+    }
+
+    cleaned[key] = value;
+  });
+
+  return cleaned;
+}

@@ -59,7 +59,7 @@ export type UpdateUserPayload = {
 };
 
 export async function getUsersApi(query: UserListQuery) {
-  const response = await http.get<UserListResponse | UserItem[]>('/users', {
+  const response = await http.get<UserListResponse>('/users', {
     params: query,
   });
 
