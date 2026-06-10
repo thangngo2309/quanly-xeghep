@@ -1,0 +1,114 @@
+import { cleanParams, http } from './http';
+import type { TripItem } from './trips.api';
+
+export type BookingStatus =
+  | 'PENDING'
+  | 'CONFIRMED'
+  | 'PICKED_UP'
+  | 'COMPLETED'
+  | 'CANCELED'
+  | 'NO_SHOW';
+
+export type BookingItem = {
+  id: string;
+  bookingCode: string;
+
+  companyId: string;
+  company?: {
+    id: string;
+    code: string;
+    name: string;
+  } | null;
+
+  tripId: string;
+  trip?: TripItem | null;
+
+  customerName: string;
+  customerPhone: string;
+  customerEmail?: string | null;
+
+  passengerCount: number;
+
+  pickupAddress?: string | null;
+  dropoffAddress?: string | null;
+  pickupNote?: string | null;
+  dropoffNote?: string | null;
+
+  seatPrice?: string | number | null;
+  totalAmount?: string | number | null;
+
+  status: BookingStatus;
+  note?: string | null;
+
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type BookingListQuery = {
+  page?: number;
+  limit?: number;
+  keyword?: string;
+  companyId?: string;
+  tripId?: string;
+  routeId?: string;
+  driverId?: string;
+  status?: BookingStatus | '';
+  fromDate?: string;
+  toDate?: string;
+  sortBy?: string;
+  sortOrder?: 'asc' | 'desc';
+};
+
+export type BookingListResponse = {
+  items: BookingItem[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+};
+
+export type CreateBookingPayload = {
+  tripId: string;
+  customerName: string;
+  customerPhone: string;
+  customerEmail?: string;
+  passengerCount?: number;
+  pickupAddress?: string;
+  dropoffAddress?: string;
+  pickupNote?: string;
+  dropoffNote?: string;
+  seatPrice?: number;
+  status?: BookingStatus;
+  note?: string;
+};
+
+export type UpdateBookingPayload = Partial<CreateBookingPayload>;
+
+export async function getBookingsApi(query: BookingListQuery) {
+  const response = await http.get<BookingListResponse>('/bookings', {
+    params: cleanParams(query),
+  });
+
+  return response.data;
+}
+
+export async function createBookingApi(payload: CreateBookingPayload) {
+  const response = await http.post<BookingItem>('/bookings', payload);
+
+  return response.data;
+}
+
+export async function updateBookingApi(
+  id: string,
+  payload: UpdateBookingPayload,
+) {
+  const response = await http.patch<BookingItem>(`/bookings/${id}`, payload);
+
+  return response.data;
+}
+
+export async function deleteBookingApi(id: string) {
+  const response = await http.delete<{ message: string }>(`/bookings/${id}`);
+
+  return response.data;
+}

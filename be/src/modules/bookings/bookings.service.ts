@@ -1,0 +1,543 @@
+import {
+  BadRequestException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { DataSource, Repository } from 'typeorm';
+import type { CurrentUserData } from '../../common/decorators/current-user.decorator';
+import { Company } from '../companies/entities/company.entity';
+import { Trip } from '../trips/entities/trip.entity';
+import { CreateBookingDto } from './dto/create-booking.dto';
+import { ListBookingsQueryDto } from './dto/list-bookings-query.dto';
+import { UpdateBookingDto } from './dto/update-booking.dto';
+import { Booking } from './entities/booking.entity';
+import { BookingStatus } from 'src/enums/booking-status.enum';
+import { UserRole } from 'src/enums/user.enums';
+import { TripStatus } from 'src/enums/trip-status.enum';
+
+@Injectable()
+export class BookingsService {
+  constructor(
+    private readonly dataSource: DataSource,
+
+    @InjectRepository(Booking)
+    private readonly bookingRepository: Repository<Booking>,
+
+    @InjectRepository(Trip)
+    private readonly tripRepository: Repository<Trip>,
+
+    @InjectRepository(Company)
+    private readonly companyRepository: Repository<Company>,
+  ) {}
+
+  private generateBookingCode() {
+    const now = new Date();
+
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const random = Math.floor(100000 + Math.random() * 900000);
+
+    return `BK-${year}${month}${day}-${random}`;
+  }
+
+  private isSeatCountedStatus(status: BookingStatus) {
+    return ![
+      BookingStatus.CANCELED,
+      BookingStatus.NO_SHOW,
+    ].includes(status);
+  }
+
+  private assertAdminHasCompany(currentUser: CurrentUserData) {
+    if (currentUser.role === UserRole.ADMIN && !currentUser.companyId) {
+      throw new ForbiddenException('Tài khoản admin chưa được gán nhà xe');
+    }
+  }
+
+  private assertCanAccessCompany(
+    currentUser: CurrentUserData,
+    companyId: string,
+  ) {
+    if (currentUser.role !== UserRole.ADMIN) {
+      return;
+    }
+
+    this.assertAdminHasCompany(currentUser);
+
+    if (currentUser.companyId !== companyId) {
+      throw new ForbiddenException(
+        'Bạn không có quyền thao tác booking của nhà xe khác',
+      );
+    }
+  }
+
+  private assertCanAccessBooking(
+    currentUser: CurrentUserData,
+    booking: Booking,
+  ) {
+    if (currentUser.role === UserRole.DRIVER) {
+      if (booking.trip?.driverId !== currentUser.userId) {
+        throw new ForbiddenException(
+          'Bạn không có quyền truy cập booking này',
+        );
+      }
+
+      return;
+    }
+
+    this.assertCanAccessCompany(currentUser, booking.companyId);
+  }
+
+  private assertTripCanReceiveBooking(trip: Trip) {
+    if (
+      [
+        TripStatus.COMPLETED,
+        TripStatus.CANCELED,
+      ].includes(trip.status)
+    ) {
+      throw new BadRequestException(
+        'Không thể tạo booking cho chuyến đã hoàn thành hoặc đã hủy',
+      );
+    }
+  }
+
+  private calculateTotalAmount(
+    passengerCount: number,
+    seatPrice: number | null,
+  ) {
+    if (seatPrice === null) {
+      return null;
+    }
+
+    return passengerCount * seatPrice;
+  }
+
+  async create(dto: CreateBookingDto, currentUser: CurrentUserData) {
+    return this.dataSource.transaction(async (manager) => {
+      const tripRepository = manager.getRepository(Trip);
+      const bookingRepository = manager.getRepository(Booking);
+
+      const trip = await tripRepository.findOne({
+        where: {
+          id: dto.tripId,
+        },
+        lock: {
+          mode: 'pessimistic_write',
+        },
+      });
+
+      if (!trip) {
+        throw new BadRequestException('Chuyến xe không tồn tại');
+      }
+
+      this.assertCanAccessCompany(currentUser, trip.companyId);
+      this.assertTripCanReceiveBooking(trip);
+
+      const passengerCount = dto.passengerCount || 1;
+      const status = dto.status || BookingStatus.CONFIRMED;
+
+      if (this.isSeatCountedStatus(status)) {
+        const availableSeats = trip.totalSeats - trip.bookedSeats;
+
+        if (passengerCount > availableSeats) {
+          throw new BadRequestException(
+            `Chuyến xe chỉ còn ${availableSeats} ghế trống`,
+          );
+        }
+
+        trip.bookedSeats += passengerCount;
+      }
+
+      const seatPrice =
+        dto.seatPrice !== undefined && dto.seatPrice !== null
+          ? dto.seatPrice
+          : trip.basePrice !== null
+            ? Number(trip.basePrice)
+            : null;
+
+      const totalAmount = this.calculateTotalAmount(
+        passengerCount,
+        seatPrice,
+      );
+
+      const booking = bookingRepository.create({
+        bookingCode: this.generateBookingCode(),
+        companyId: trip.companyId,
+        tripId: trip.id,
+        customerName: dto.customerName.trim(),
+        customerPhone: dto.customerPhone.trim(),
+        customerEmail: dto.customerEmail || null,
+        passengerCount,
+        pickupAddress: dto.pickupAddress || null,
+        dropoffAddress: dto.dropoffAddress || null,
+        pickupNote: dto.pickupNote || null,
+        dropoffNote: dto.dropoffNote || null,
+        seatPrice: seatPrice !== null ? String(seatPrice) : null,
+        totalAmount: totalAmount !== null ? String(totalAmount) : null,
+        status,
+        note: dto.note || null,
+      });
+
+      await tripRepository.save(trip);
+
+      const savedBooking = await bookingRepository.save(booking);
+
+      return this.findOne(savedBooking.id, currentUser);
+    });
+  }
+
+  async findAll(query: ListBookingsQueryDto, currentUser: CurrentUserData) {
+    const page = Number(query.page || 1);
+    const limit = Number(query.limit || 10);
+    const skip = (page - 1) * limit;
+
+    const sortBy = query.sortBy || 'createdAt';
+    const sortOrder = query.sortOrder || 'desc';
+
+    const sortColumnMap: Record<string, string> = {
+      bookingCode: 'booking.booking_code',
+      customerName: 'booking.customer_name',
+      customerPhone: 'booking.customer_phone',
+      passengerCount: 'booking.passenger_count',
+      seatPrice: 'booking.seat_price',
+      totalAmount: 'booking.total_amount',
+      status: 'booking.status',
+      createdAt: 'booking.created_at',
+      updatedAt: 'booking.updated_at',
+    };
+
+    const qb = this.bookingRepository
+      .createQueryBuilder('booking')
+      .leftJoinAndSelect('booking.company', 'company')
+      .leftJoinAndSelect('booking.trip', 'trip')
+      .leftJoinAndSelect('trip.route', 'route')
+      .leftJoinAndSelect('trip.vehicle', 'vehicle')
+      .leftJoinAndSelect('trip.driver', 'driver');
+
+    if (query.keyword) {
+      const keyword = `%${query.keyword}%`;
+
+      qb.andWhere(
+        `
+        (
+          booking.booking_code ILIKE :keyword
+          OR booking.customer_name ILIKE :keyword
+          OR booking.customer_phone ILIKE :keyword
+          OR route.name ILIKE :keyword
+          OR vehicle.license_plate ILIKE :keyword
+          OR driver.full_name ILIKE :keyword
+          OR company.name ILIKE :keyword
+          OR company.code ILIKE :keyword
+        )
+        `,
+        {
+          keyword,
+        },
+      );
+    }
+
+    if (currentUser.role === UserRole.ADMIN) {
+      this.assertAdminHasCompany(currentUser);
+
+      qb.andWhere('booking.company_id = :companyId', {
+        companyId: currentUser.companyId,
+      });
+    } else if (currentUser.role === UserRole.DRIVER) {
+      qb.andWhere('trip.driver_id = :driverId', {
+        driverId: currentUser.userId,
+      });
+    } else if (query.companyId) {
+      qb.andWhere('booking.company_id = :companyId', {
+        companyId: query.companyId,
+      });
+    }
+
+    if (query.tripId) {
+      qb.andWhere('booking.trip_id = :tripId', {
+        tripId: query.tripId,
+      });
+    }
+
+    if (query.routeId) {
+      qb.andWhere('trip.route_id = :routeId', {
+        routeId: query.routeId,
+      });
+    }
+
+    if (query.driverId && currentUser.role !== UserRole.DRIVER) {
+      qb.andWhere('trip.driver_id = :driverId', {
+        driverId: query.driverId,
+      });
+    }
+
+    if (query.status) {
+      qb.andWhere('booking.status = :status', {
+        status: query.status,
+      });
+    }
+
+    if (query.fromDate) {
+      qb.andWhere('trip.departure_time >= :fromDate', {
+        fromDate: `${query.fromDate}T00:00:00+07:00`,
+      });
+    }
+
+    if (query.toDate) {
+      qb.andWhere('trip.departure_time <= :toDate', {
+        toDate: `${query.toDate}T23:59:59+07:00`,
+      });
+    }
+
+    qb.orderBy(
+      sortColumnMap[sortBy] || 'booking.created_at',
+      sortOrder.toUpperCase() as 'ASC' | 'DESC',
+    )
+      .skip(skip)
+      .take(limit);
+
+    const [items, total] = await qb.getManyAndCount();
+
+    return {
+      items,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    };
+  }
+
+  async findOne(id: string, currentUser: CurrentUserData) {
+    const booking = await this.bookingRepository.findOne({
+      where: {
+        id,
+      },
+      relations: {
+        company: true,
+        trip: {
+          route: true,
+          vehicle: true,
+          driver: true,
+        },
+      },
+    });
+
+    if (!booking) {
+      throw new NotFoundException('Không tìm thấy booking');
+    }
+
+    this.assertCanAccessBooking(currentUser, booking);
+
+    return booking;
+  }
+
+  async update(
+    id: string,
+    dto: UpdateBookingDto,
+    currentUser: CurrentUserData,
+  ) {
+    return this.dataSource.transaction(async (manager) => {
+      const tripRepository = manager.getRepository(Trip);
+      const bookingRepository = manager.getRepository(Booking);
+
+      const booking = await bookingRepository.findOne({
+        where: {
+          id,
+        },
+        relations: {
+          trip: true,
+        },
+        lock: {
+          mode: 'pessimistic_write',
+        },
+      });
+
+      if (!booking) {
+        throw new NotFoundException('Không tìm thấy booking');
+      }
+
+      this.assertCanAccessCompany(currentUser, booking.companyId);
+
+      const oldTrip = await tripRepository.findOne({
+        where: {
+          id: booking.tripId,
+        },
+        lock: {
+          mode: 'pessimistic_write',
+        },
+      });
+
+      if (!oldTrip) {
+        throw new BadRequestException('Chuyến xe cũ không tồn tại');
+      }
+
+      const oldCounted = this.isSeatCountedStatus(booking.status);
+      const oldPassengerCount = booking.passengerCount;
+
+      let nextTrip = oldTrip;
+
+      if (dto.tripId && dto.tripId !== booking.tripId) {
+        const newTrip = await tripRepository.findOne({
+          where: {
+            id: dto.tripId,
+          },
+          lock: {
+            mode: 'pessimistic_write',
+          },
+        });
+
+        if (!newTrip) {
+          throw new BadRequestException('Chuyến xe mới không tồn tại');
+        }
+
+        this.assertCanAccessCompany(currentUser, newTrip.companyId);
+        this.assertTripCanReceiveBooking(newTrip);
+
+        nextTrip = newTrip;
+      }
+
+      const nextStatus = dto.status || booking.status;
+      const nextPassengerCount =
+        dto.passengerCount !== undefined
+          ? dto.passengerCount
+          : booking.passengerCount;
+
+      const nextCounted = this.isSeatCountedStatus(nextStatus);
+
+      if (oldCounted) {
+        oldTrip.bookedSeats -= oldPassengerCount;
+
+        if (oldTrip.bookedSeats < 0) {
+          oldTrip.bookedSeats = 0;
+        }
+      }
+
+      if (nextCounted) {
+        const availableSeats = nextTrip.totalSeats - nextTrip.bookedSeats;
+
+        if (nextPassengerCount > availableSeats) {
+          throw new BadRequestException(
+            `Chuyến xe chỉ còn ${availableSeats} ghế trống`,
+          );
+        }
+
+        nextTrip.bookedSeats += nextPassengerCount;
+      }
+
+      const seatPrice =
+        dto.seatPrice !== undefined && dto.seatPrice !== null
+          ? dto.seatPrice
+          : booking.seatPrice !== null
+            ? Number(booking.seatPrice)
+            : nextTrip.basePrice !== null
+              ? Number(nextTrip.basePrice)
+              : null;
+
+      const totalAmount = this.calculateTotalAmount(
+        nextPassengerCount,
+        seatPrice,
+      );
+
+      booking.tripId = nextTrip.id;
+      booking.companyId = nextTrip.companyId;
+      booking.passengerCount = nextPassengerCount;
+      booking.status = nextStatus;
+      booking.seatPrice = seatPrice !== null ? String(seatPrice) : null;
+      booking.totalAmount = totalAmount !== null ? String(totalAmount) : null;
+
+      if (dto.customerName !== undefined) {
+        booking.customerName = dto.customerName.trim();
+      }
+
+      if (dto.customerPhone !== undefined) {
+        booking.customerPhone = dto.customerPhone.trim();
+      }
+
+      if (dto.customerEmail !== undefined) {
+        booking.customerEmail = dto.customerEmail || null;
+      }
+
+      if (dto.pickupAddress !== undefined) {
+        booking.pickupAddress = dto.pickupAddress || null;
+      }
+
+      if (dto.dropoffAddress !== undefined) {
+        booking.dropoffAddress = dto.dropoffAddress || null;
+      }
+
+      if (dto.pickupNote !== undefined) {
+        booking.pickupNote = dto.pickupNote || null;
+      }
+
+      if (dto.dropoffNote !== undefined) {
+        booking.dropoffNote = dto.dropoffNote || null;
+      }
+
+      if (dto.note !== undefined) {
+        booking.note = dto.note || null;
+      }
+
+      await tripRepository.save(oldTrip);
+
+      if (nextTrip.id !== oldTrip.id) {
+        await tripRepository.save(nextTrip);
+      }
+
+      const savedBooking = await bookingRepository.save(booking);
+
+      return this.findOne(savedBooking.id, currentUser);
+    });
+  }
+
+  async remove(id: string, currentUser: CurrentUserData) {
+    return this.dataSource.transaction(async (manager) => {
+      const tripRepository = manager.getRepository(Trip);
+      const bookingRepository = manager.getRepository(Booking);
+
+      const booking = await bookingRepository.findOne({
+        where: {
+          id,
+        },
+        lock: {
+          mode: 'pessimistic_write',
+        },
+      });
+
+      if (!booking) {
+        throw new NotFoundException('Không tìm thấy booking');
+      }
+
+      this.assertCanAccessCompany(currentUser, booking.companyId);
+
+      const trip = await tripRepository.findOne({
+        where: {
+          id: booking.tripId,
+        },
+        lock: {
+          mode: 'pessimistic_write',
+        },
+      });
+
+      if (!trip) {
+        throw new BadRequestException('Chuyến xe không tồn tại');
+      }
+
+      if (this.isSeatCountedStatus(booking.status)) {
+        trip.bookedSeats -= booking.passengerCount;
+
+        if (trip.bookedSeats < 0) {
+          trip.bookedSeats = 0;
+        }
+
+        await tripRepository.save(trip);
+      }
+
+      await bookingRepository.remove(booking);
+
+      return {
+        message: 'Xóa booking thành công',
+      };
+    });
+  }
+}

@@ -9,6 +9,8 @@ import { SeedsModule } from './database/seeds/seeds.module';
 import { CompaniesModule } from './modules/companies/companies.module';
 import { VehiclesModule } from './modules/vehicles/vehicles.module';
 import { RoutesModule } from './modules/routes/routes.module';
+import { TripsModule } from './modules/trips/trips.module';
+import { BookingsModule } from './modules/bookings/bookings.module';
 
 @Module({
   imports: [
@@ -31,7 +33,9 @@ import { RoutesModule } from './modules/routes/routes.module';
     SeedsModule,
     CompaniesModule,
     VehiclesModule,
-    RoutesModule
+    RoutesModule,
+    TripsModule,
+    BookingsModule
   ],
   controllers: [AppController],
   providers: [AppService],
