@@ -11,6 +11,7 @@ import { VehiclesModule } from './modules/vehicles/vehicles.module';
 import { RoutesModule } from './modules/routes/routes.module';
 import { TripsModule } from './modules/trips/trips.module';
 import { BookingsModule } from './modules/bookings/bookings.module';
+import { SettingsModule } from './modules/settings/settings.module';
 
 @Module({
   imports: [
@@ -35,7 +36,8 @@ import { BookingsModule } from './modules/bookings/bookings.module';
     VehiclesModule,
     RoutesModule,
     TripsModule,
-    BookingsModule
+    BookingsModule,
+    SettingsModule
   ],
   controllers: [AppController],
   providers: [AppService],
