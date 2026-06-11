@@ -317,7 +317,7 @@ export class BookingsService {
   }
 
   async create(dto: CreateBookingDto, currentUser: CurrentUserData) {
-    return this.dataSource.transaction(async (manager) => {
+    const savedBookingId = await this.dataSource.transaction(async (manager) => {
       const tripRepository = manager.getRepository(Trip);
       const bookingRepository = manager.getRepository(Booking);
   
@@ -374,8 +374,10 @@ export class BookingsService {
   
       const savedBooking = await bookingRepository.save(booking);
   
-      return this.findOne(savedBooking.id, currentUser);
+      return savedBooking.id;
     });
+  
+    return this.findOne(savedBookingId, currentUser);
   }
 
   async findAll(query: ListBookingsQueryDto, currentUser: CurrentUserData) {

@@ -43,6 +43,8 @@ type HDatePickerProps<T extends FieldValues> = {
   maxDate?: Dayjs;
   disablePast?: boolean;
   disableFuture?: boolean;
+  size?: TextFieldProps['size'];
+  compact?: boolean;
   sx?: SxProps<Theme>;
   textFieldProps?: HDatePickerTextFieldProps;
 };
@@ -109,6 +111,8 @@ export function HDatePicker<T extends FieldValues>({
   maxDate,
   disablePast,
   disableFuture,
+  size = 'small',
+  compact = true,
   sx,
   textFieldProps,
 }: HDatePickerProps<T>) {
@@ -136,11 +140,53 @@ export function HDatePicker<T extends FieldValues>({
           slotProps={{
             textField: {
               ...textFieldProps,
-              sx,
+              size,
               fullWidth,
               required: isRequired,
               error: !!fieldState.error,
               helperText: fieldState.error?.message || helperText,
+              sx: [
+                compact
+                  ? {
+                      '& .MuiInputBase-root': {
+                        minHeight: 44,
+                        height: 44,
+                        borderRadius: 2,
+                        fontSize: 15,
+                      },
+                      '& .MuiOutlinedInput-input': {
+                        py: 0,
+                        height: 44,
+                        boxSizing: 'border-box',
+                        display: 'flex',
+                        alignItems: 'center',
+                      },
+                      '& .MuiInputLabel-root': {
+                        fontSize: 14,
+                      },
+                      '& .MuiInputLabel-root:not(.MuiInputLabel-shrink)': {
+                        transform: 'translate(14px, 11px) scale(1)',
+                      },
+                      '& .MuiInputLabel-shrink': {
+                        transform: 'translate(14px, -9px) scale(0.75)',
+                      },
+                      '& .MuiInputAdornment-root': {
+                        height: 44,
+                        maxHeight: 44,
+                      },
+                      '& .MuiInputAdornment-root .MuiSvgIcon-root': {
+                        fontSize: 20,
+                      },
+                      '& .MuiFormHelperText-root': {
+                        mx: 0,
+                        mt: 0.5,
+                        fontSize: 12,
+                        lineHeight: 1.35,
+                      },
+                    }
+                  : {},
+                ...(Array.isArray(sx) ? sx : [sx]),
+              ],
             } as PickerTextFieldSlot,
           }}
         />

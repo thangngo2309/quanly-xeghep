@@ -22,13 +22,21 @@ import {
   type GridSortModel,
   type GridValidRowModel,
 } from "@mui/x-data-grid";
+import {
+  Children,
+  Fragment,
+  isValidElement,
+  useCallback,
+  type ReactElement,
+  type ReactNode,
+} from "react";
 import type {
   FieldValues,
   SubmitHandler,
   UseFormReturn,
 } from "react-hook-form";
+
 import { HForm } from "@/components/form";
-import { useCallback } from "react";
 
 type HDataTableProps<
   TRow extends GridValidRowModel,
@@ -54,10 +62,10 @@ type HDataTableProps<
 
   searchMethods?: UseFormReturn<TSearch>;
   onSearch?: SubmitHandler<TSearch>;
-  searchContent?: React.ReactNode;
+  searchContent?: ReactNode;
   onResetSearch?: () => void;
 
-  actions?: React.ReactNode;
+  actions?: ReactNode;
   onRefresh?: () => void;
 
   /**
@@ -92,6 +100,29 @@ function isSameSortModel(current?: GridSortModel, next?: GridSortModel) {
 
 function deferCallback(callback: () => void) {
   setTimeout(callback, 0);
+}
+
+function flattenReactChildren(children: ReactNode): ReactNode[] {
+  const result: ReactNode[] = [];
+
+  Children.forEach(children, (child) => {
+    if (child === null || child === undefined || typeof child === "boolean") {
+      return;
+    }
+
+    if (isValidElement(child) && child.type === Fragment) {
+      const fragmentElement = child as ReactElement<{
+        children?: ReactNode;
+      }>;
+
+      result.push(...flattenReactChildren(fragmentElement.props.children));
+      return;
+    }
+
+    result.push(child);
+  });
+
+  return result;
 }
 
 export function HDataTable<
@@ -131,8 +162,7 @@ export function HDataTable<
   sx,
   dataGridProps,
 }: HDataTableProps<TRow, TSearch>) {
-  const hasHeader = title || description || actions || onRefresh;
-  const hasSearch = searchMethods && onSearch && searchContent;
+  const hasHeader = Boolean(title || description || actions || onRefresh);
 
   const calculatedHeight =
     height ??
@@ -142,8 +172,12 @@ export function HDataTable<
     );
 
   function handleResetSearch() {
+    if (onResetSearch) {
+      onResetSearch();
+      return;
+    }
+
     searchMethods?.reset();
-    onResetSearch?.();
   }
 
   const handleDataGridPaginationModelChange = useCallback(
@@ -256,85 +290,129 @@ export function HDataTable<
         </>
       )}
 
-      {hasSearch && (
+      {searchMethods && onSearch && searchContent && (
         <>
-          <CardContent sx={{ py: 1.75 }}>
+          <CardContent
+            sx={{
+              py: 1.5,
+              px: 2,
+              "& .MuiFormControl-root": {
+                width: "100%",
+              },
+              "& .MuiInputBase-root": {
+                minHeight: 44,
+                borderRadius: 2,
+                fontSize: 15,
+              },
+              "& .MuiOutlinedInput-root": {
+                minHeight: 44,
+              },
+              "& .MuiOutlinedInput-input": {
+                py: 1.15,
+              },
+              "& .MuiSelect-select": {
+                py: 1.15,
+                display: "flex",
+                alignItems: "center",
+              },
+              "& .MuiInputLabel-root": {
+                fontSize: 14,
+              },
+              "& .MuiFormHelperText-root": {
+                mx: 0,
+                mt: 0.5,
+                fontSize: 12,
+                lineHeight: 1.35,
+              },
+              "& .MuiInputAdornment-root .MuiSvgIcon-root": {
+                fontSize: 20,
+              },
+            }}
+          >
             <HForm methods={searchMethods} onSubmit={onSearch}>
               <Box
                 sx={{
-                  display: "flex",
-                  alignItems: {
-                    xs: "stretch",
-                    md: "flex-start",
-                  },
-                  justifyContent: "space-between",
-                  gap: 1.5,
-                  flexDirection: {
-                    xs: "column",
-                    md: "row",
-                  },
+                  display: "grid",
+                  gridTemplateColumns: "repeat(12, minmax(0, 1fr))",
+                  columnGap: 1.5,
+                  rowGap: 1.5,
+                  alignItems: "start",
                 }}
               >
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: 1.5,
-                    flex: 1,
-                    minWidth: 0,
-                    "& > *": {
-                      width: {
-                        xs: "100%",
-                        sm: 280,
-                        md: 300,
+                {flattenReactChildren(searchContent).map((child, index) => (
+                  <Box
+                    key={index}
+                    sx={{
+                      gridColumn: {
+                        xs: "span 12",
+                        sm: "span 8",
+                        md: "span 3",
                       },
-                    },
-                  }}
-                >
-                  {searchContent}
-                </Box>
+                      minWidth: 0,
+                    }}
+                  >
+                    {child}
+                  </Box>
+                ))}
 
                 <Box
                   sx={{
+                    gridColumn: {
+                      xs: "span 12",
+                      sm: "span 8",
+                      md: "span 3",
+                    },
+                    minWidth: 0,
                     display: "flex",
-                    gap: 1,
-                    justifyContent: {
-                      xs: "flex-start",
-                      md: "flex-end",
-                    },
-                    flexShrink: 0,
-                    pt: {
-                      xs: 0,
-                      md: 0,
-                    },
+                    alignItems: "flex-start",
                   }}
                 >
-                  {onResetSearch && (
+                  <Stack
+                    direction="row"
+                    spacing={1}
+                    sx={{
+                      alignItems: "flex-start",
+                      width: "100%",
+                    }}
+                  >
+                    {onResetSearch && (
+                      <Button
+                        type="button"
+                        variant="outlined"
+                        onClick={handleResetSearch}
+                        disabled={loading}
+                        size="medium"
+                        sx={{
+                          minWidth: 96,
+                          minHeight: 44,
+                          height: 44,
+                          px: 2,
+                          borderRadius: 2,
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        Xóa lọc
+                      </Button>
+                    )}
+
                     <Button
-                      variant="outlined"
-                      onClick={handleResetSearch}
+                      type="submit"
+                      variant="contained"
+                      startIcon={<SearchIcon />}
                       disabled={loading}
                       size="medium"
                       sx={{
-                        minWidth: 100,
+                        minWidth: 120,
+                        minHeight: 44,
+                        height: 44,
+                        px: 2,
+                        borderRadius: 2,
+                        whiteSpace: "nowrap",
                       }}
                     >
-                      Xóa lọc
+                      Tìm kiếm
                     </Button>
-                  )}
-
-                  <Button
-                    type="submit"
-                    variant="contained"
-                    startIcon={<SearchIcon />}
-                    disabled={loading}
-                    size="medium"
-                    sx={{
-                      minWidth: 120,
-                    }}
-                  >
-                    Tìm kiếm
-                  </Button>
+                  </Stack>
                 </Box>
               </Box>
             </HForm>
