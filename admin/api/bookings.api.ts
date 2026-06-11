@@ -1,4 +1,5 @@
 import { cleanParams, http } from './http';
+import type { RouteDirection } from './route-lines.api';
 import type { TripItem } from './trips.api';
 
 export type BookingStatus =
@@ -50,6 +51,7 @@ export type BookingListQuery = {
   keyword?: string;
   companyId?: string;
   tripId?: string;
+  routeLineId?: string;
   routeId?: string;
   driverId?: string;
   status?: BookingStatus | '';
@@ -67,8 +69,34 @@ export type BookingListResponse = {
   totalPages: number;
 };
 
+export type AvailableBookingTimeItem = {
+  time: string;
+  label: string;
+  tripCount: number;
+  availableSeats: number;
+  vehicles: string[];
+  drivers: string[];
+};
+
+export type AvailableBookingTimesResponse = {
+  items: AvailableBookingTimeItem[];
+};
+
+export type AvailableBookingTimesQuery = {
+  routeLineId: string;
+  direction: RouteDirection;
+  travelDate: string;
+  passengerCount?: number;
+};
+
 export type CreateBookingPayload = {
-  tripId: string;
+  tripId?: string;
+
+  routeLineId?: string;
+  direction?: RouteDirection;
+  travelDate?: string;
+  preferredTime?: string;
+
   customerName: string;
   customerPhone: string;
   customerEmail?: string;
@@ -88,6 +116,19 @@ export async function getBookingsApi(query: BookingListQuery) {
   const response = await http.get<BookingListResponse>('/bookings', {
     params: cleanParams(query),
   });
+
+  return response.data;
+}
+
+export async function getAvailableBookingTimesApi(
+  query: AvailableBookingTimesQuery,
+) {
+  const response = await http.get<AvailableBookingTimesResponse>(
+    '/bookings/available-times',
+    {
+      params: cleanParams(query),
+    },
+  );
 
   return response.data;
 }

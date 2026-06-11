@@ -22,6 +22,7 @@ import { CreateBookingDto } from './dto/create-booking.dto';
 import { ListBookingsQueryDto } from './dto/list-bookings-query.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
 import { UserRole } from 'src/enums/user.enums';
+import { AvailableBookingTimesQueryDto } from './dto/available-booking-times-query.dto';
 
 @ApiTags('Bookings')
 @ApiBearerAuth()
@@ -48,6 +49,15 @@ export class BookingsController {
     return this.bookingsService.findAll(query, currentUser);
   }
 
+  @Get('available-times')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  findAvailableTimes(
+    @Query() query: AvailableBookingTimesQueryDto,
+    @CurrentUser() currentUser: CurrentUserData,
+  ) {
+    return this.bookingsService.findAvailableTimes(query, currentUser);
+  }
+
   @Get(':id')
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN, UserRole.DRIVER)
   findOne(
@@ -69,10 +79,7 @@ export class BookingsController {
 
   @Delete(':id')
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
-  remove(
-    @Param('id') id: string,
-    @CurrentUser() currentUser: CurrentUserData,
-  ) {
+  remove(@Param('id') id: string, @CurrentUser() currentUser: CurrentUserData) {
     return this.bookingsService.remove(id, currentUser);
   }
 }

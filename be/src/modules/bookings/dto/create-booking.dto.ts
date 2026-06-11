@@ -1,6 +1,7 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import {
+  IsDateString,
   IsEmail,
   IsEnum,
   IsInt,
@@ -8,27 +9,67 @@ import {
   IsOptional,
   IsString,
   IsUUID,
+  Matches,
   Max,
   MaxLength,
   Min,
 } from 'class-validator';
 import { BookingStatus } from 'src/enums/booking-status.enum';
+import { RouteDirection } from 'src/enums/route-direction.enum';
 
 export class CreateBookingDto {
-  @ApiProperty({
+  /**
+   * Vẫn cho phép truyền tripId để tương thích API cũ.
+   * Nhưng flow mới UI sẽ không dùng tripId nữa.
+   */
+  @ApiPropertyOptional({
     example: 'uuid-trip-id',
   })
+  @IsOptional()
   @IsUUID()
-  tripId: string;
+  tripId?: string;
 
-  @ApiProperty({
+  /**
+   * Flow mới: chọn tuyến khai thác + chiều + ngày + giờ.
+   * BE tự tìm trip phù hợp.
+   */
+  @ApiPropertyOptional({
+    example: 'uuid-route-line-id',
+  })
+  @IsOptional()
+  @IsUUID()
+  routeLineId?: string;
+
+  @ApiPropertyOptional({
+    enum: RouteDirection,
+    example: RouteDirection.OUTBOUND,
+  })
+  @IsOptional()
+  @IsEnum(RouteDirection)
+  direction?: RouteDirection;
+
+  @ApiPropertyOptional({
+    example: '2026-06-11',
+  })
+  @IsOptional()
+  @IsDateString()
+  travelDate?: string;
+
+  @ApiPropertyOptional({
+    example: '05:00',
+  })
+  @IsOptional()
+  @Matches(/^([01]\d|2[0-3]):[0-5]\d$/)
+  preferredTime?: string;
+
+  @ApiPropertyOptional({
     example: 'Nguyễn Văn A',
   })
   @IsString()
   @MaxLength(255)
   customerName: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     example: '0901234567',
   })
   @IsString()

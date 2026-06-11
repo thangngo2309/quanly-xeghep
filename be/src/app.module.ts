@@ -12,6 +12,8 @@ import { RoutesModule } from './modules/routes/routes.module';
 import { TripsModule } from './modules/trips/trips.module';
 import { BookingsModule } from './modules/bookings/bookings.module';
 import { SettingsModule } from './modules/settings/settings.module';
+import { RouteLinesModule } from './modules/route-lines/route-lines.module';
+import { RouteSchedulesModule } from './modules/route-schedules/route-schedules.module';
 
 @Module({
   imports: [
@@ -37,7 +39,9 @@ import { SettingsModule } from './modules/settings/settings.module';
     RoutesModule,
     TripsModule,
     BookingsModule,
-    SettingsModule
+    SettingsModule,
+    RouteLinesModule,
+    RouteSchedulesModule
   ],
   controllers: [AppController],
   providers: [AppService],

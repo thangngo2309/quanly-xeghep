@@ -1,24 +1,32 @@
 'use client';
 
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { SubmitHandler, useForm } from 'react-hook-form';
 
-import type { BookingItem, BookingStatus } from '@/api/bookings.api';
+import {
+  getAvailableBookingTimesApi,
+  type BookingItem,
+  type BookingStatus,
+} from '@/api/bookings.api';
+import type { RouteDirection } from '@/api/route-lines.api';
 import type { UserRole } from '@/api/users.api';
 import { HFormDialog } from '@/components/dialog';
-import { HDropdown, HInput } from '@/components/form';
+import { HDatePicker, HDropdown, HInput } from '@/components/form';
 
 export type SelectOption = {
   label: string;
   value: string;
   companyId?: string;
-  routeId?: string;
-  driverId?: string;
 };
 
 export type BookingFormValues = {
   companyId: string;
-  tripId: string;
+
+  routeLineId: string;
+  direction: RouteDirection;
+  travelDate: string;
+  preferredTime: string;
+
   customerName: string;
   customerPhone: string;
   customerEmail: string;
@@ -39,14 +47,52 @@ type BookingFormDialogProps = {
   loading?: boolean;
   currentRole?: UserRole | null;
   companyOptions?: SelectOption[];
-  tripOptions?: SelectOption[];
+  routeLineOptions?: SelectOption[];
   onClose: () => void;
   onSubmit: SubmitHandler<BookingFormValues>;
 };
 
+function getTodayDateString() {
+  const date = new Date();
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
+
+function toVietnamDate(value?: string | null) {
+  if (!value) return getTodayDateString();
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return getTodayDateString();
+
+  const vietnamDate = new Date(date.getTime() + 7 * 60 * 60 * 1000);
+
+  return vietnamDate.toISOString().slice(0, 10);
+}
+
+function toVietnamTime(value?: string | null) {
+  if (!value) return '';
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) return '';
+
+  const vietnamDate = new Date(date.getTime() + 7 * 60 * 60 * 1000);
+
+  return vietnamDate.toISOString().slice(11, 16);
+}
+
 const defaultValues: BookingFormValues = {
   companyId: '',
-  tripId: '',
+  routeLineId: '',
+  direction: 'OUTBOUND',
+  travelDate: getTodayDateString(),
+  preferredTime: '',
+
   customerName: '',
   customerPhone: '',
   customerEmail: '',
@@ -67,7 +113,7 @@ export function BookingFormDialog({
   loading,
   currentRole,
   companyOptions = [],
-  tripOptions = [],
+  routeLineOptions = [],
   onClose,
   onSubmit,
 }: BookingFormDialogProps) {
@@ -75,15 +121,27 @@ export function BookingFormDialog({
     defaultValues,
   });
 
-  const isSystemAdmin = currentRole === 'SUPER_ADMIN';
-  const watchedCompanyId = methods.watch('companyId');
+  const [timeOptions, setTimeOptions] = useState<SelectOption[]>([]);
+  const [timeLoading, setTimeLoading] = useState(false);
+  const [timeHelperText, setTimeHelperText] = useState<string | undefined>();
 
-  const filteredTripOptions = useMemo(() => {
-    if (!isSystemAdmin) return tripOptions;
+  const isSystemAdmin = currentRole === 'SUPER_ADMIN';
+  const isEditMode = mode === 'edit';
+
+  const watchedCompanyId = methods.watch('companyId');
+  const watchedRouteLineId = methods.watch('routeLineId');
+  const watchedDirection = methods.watch('direction');
+  const watchedTravelDate = methods.watch('travelDate');
+  const watchedPassengerCount = methods.watch('passengerCount');
+
+  const filteredRouteLineOptions = useMemo(() => {
+    if (!isSystemAdmin) return routeLineOptions;
     if (!watchedCompanyId) return [];
 
-    return tripOptions.filter((option) => option.companyId === watchedCompanyId);
-  }, [isSystemAdmin, tripOptions, watchedCompanyId]);
+    return routeLineOptions.filter(
+      (option) => option.companyId === watchedCompanyId,
+    );
+  }, [isSystemAdmin, routeLineOptions, watchedCompanyId]);
 
   useEffect(() => {
     if (!open) return;
@@ -91,7 +149,11 @@ export function BookingFormDialog({
     if (mode === 'edit' && initialValues) {
       methods.reset({
         companyId: initialValues.companyId || '',
-        tripId: initialValues.tripId || '',
+        routeLineId: initialValues.trip?.routeLineId || '',
+        direction: (initialValues.trip?.direction || 'OUTBOUND') as RouteDirection,
+        travelDate: toVietnamDate(initialValues.trip?.departureTime),
+        preferredTime: toVietnamTime(initialValues.trip?.departureTime),
+
         customerName: initialValues.customerName || '',
         customerPhone: initialValues.customerPhone || '',
         customerEmail: initialValues.customerEmail || '',
@@ -111,24 +173,110 @@ export function BookingFormDialog({
         note: initialValues.note || '',
       });
 
+      setTimeOptions([
+        {
+          label: toVietnamTime(initialValues.trip?.departureTime) || 'Giờ hiện tại',
+          value: toVietnamTime(initialValues.trip?.departureTime),
+        },
+      ]);
+
       return;
     }
 
     methods.reset(defaultValues);
+    setTimeOptions([]);
+    setTimeHelperText(undefined);
   }, [open, mode, initialValues, methods]);
 
   useEffect(() => {
-    if (!open || !isSystemAdmin) return;
+    if (!open || isEditMode) return;
 
-    const tripId = methods.getValues('tripId');
+    const routeLineId = methods.getValues('routeLineId');
 
     if (
-      tripId &&
-      !filteredTripOptions.some((option) => option.value === tripId)
+      routeLineId &&
+      !filteredRouteLineOptions.some((option) => option.value === routeLineId)
     ) {
-      methods.setValue('tripId', '');
+      methods.setValue('routeLineId', '');
+      methods.setValue('preferredTime', '');
+      setTimeOptions([]);
     }
-  }, [open, isSystemAdmin, watchedCompanyId, filteredTripOptions, methods]);
+  }, [
+    open,
+    isEditMode,
+    watchedCompanyId,
+    filteredRouteLineOptions,
+    methods,
+  ]);
+
+  useEffect(() => {
+    if (!open || isEditMode) return;
+
+    const routeLineId = watchedRouteLineId;
+    const direction = watchedDirection;
+    const travelDate = watchedTravelDate;
+    const passengerCount = Number(watchedPassengerCount || 1);
+
+    methods.setValue('preferredTime', '');
+    setTimeOptions([]);
+
+    if (!routeLineId || !direction || !travelDate) {
+      setTimeHelperText('Chọn tuyến, chiều và ngày đi để tải giờ còn chỗ.');
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadTimes() {
+      setTimeLoading(true);
+      setTimeHelperText(undefined);
+
+      try {
+        const data = await getAvailableBookingTimesApi({
+          routeLineId,
+          direction,
+          travelDate,
+          passengerCount,
+        });
+
+        if (cancelled) return;
+
+        const options = data.items.map((item) => ({
+          label: item.label,
+          value: item.time,
+        }));
+
+        setTimeOptions(options);
+
+        if (options.length === 0) {
+          setTimeHelperText('Không có chuyến còn ghế trong ngày đã chọn.');
+        }
+      } catch {
+        if (cancelled) return;
+
+        setTimeOptions([]);
+        setTimeHelperText('Không tải được giờ còn chỗ.');
+      } finally {
+        if (!cancelled) {
+          setTimeLoading(false);
+        }
+      }
+    }
+
+    loadTimes();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    open,
+    isEditMode,
+    watchedRouteLineId,
+    watchedDirection,
+    watchedTravelDate,
+    watchedPassengerCount,
+    methods,
+  ]);
 
   return (
     <HFormDialog<BookingFormValues>
@@ -137,8 +285,8 @@ export function BookingFormDialog({
       title={mode === 'add' ? 'Thêm booking' : 'Cập nhật booking'}
       description={
         mode === 'add'
-          ? 'Tạo booking mới cho chuyến xe.'
-          : 'Cập nhật thông tin booking và trạng thái giữ chỗ.'
+          ? 'Chọn tuyến, ngày và giờ đi. Hệ thống tự tìm chuyến phù hợp còn ghế.'
+          : 'Cập nhật thông tin khách và trạng thái booking.'
       }
       methods={methods}
       onSubmit={onSubmit}
@@ -153,14 +301,9 @@ export function BookingFormDialog({
           label="Nhà xe"
           placeholder="Chọn nhà xe"
           options={companyOptions}
-          disabled={companyOptions.length === 0}
-          helperText={
-            companyOptions.length === 0
-              ? 'Chưa có nhà xe hoạt động để chọn'
-              : undefined
-          }
+          disabled={isEditMode || companyOptions.length === 0}
           rules={{
-            required: 'Vui lòng chọn nhà xe',
+            required: mode === 'add' ? 'Vui lòng chọn nhà xe' : false,
           }}
           sx={{
             gridColumn: {
@@ -172,26 +315,58 @@ export function BookingFormDialog({
       )}
 
       <HDropdown<BookingFormValues>
-        name="tripId"
-        label="Chuyến xe"
-        placeholder="Chọn chuyến xe"
-        options={filteredTripOptions}
-        disabled={filteredTripOptions.length === 0}
+        name="routeLineId"
+        label="Tuyến khai thác"
+        placeholder="Chọn tuyến khai thác"
+        options={filteredRouteLineOptions}
+        disabled={isEditMode || filteredRouteLineOptions.length === 0}
         helperText={
           isSystemAdmin && !watchedCompanyId
             ? 'Vui lòng chọn nhà xe trước'
-            : filteredTripOptions.length === 0
-              ? 'Chưa có chuyến xe phù hợp'
-              : undefined
+            : undefined
         }
         rules={{
-          required: 'Vui lòng chọn chuyến xe',
+          required: mode === 'add' ? 'Vui lòng chọn tuyến khai thác' : false,
         }}
-        sx={{
-          gridColumn: {
-            xs: 'auto',
-            md: '1 / -1',
+      />
+
+      <HDropdown<BookingFormValues>
+        name="direction"
+        label="Chiều đi"
+        disabled={isEditMode}
+        options={[
+          {
+            label: 'Chiều đi',
+            value: 'OUTBOUND',
           },
+          {
+            label: 'Chiều về',
+            value: 'RETURN',
+          },
+        ]}
+        rules={{
+          required: mode === 'add' ? 'Vui lòng chọn chiều đi' : false,
+        }}
+      />
+
+      <HDatePicker<BookingFormValues>
+        name="travelDate"
+        label="Ngày đi"
+        disabled={isEditMode}
+        rules={{
+          required: mode === 'add' ? 'Vui lòng chọn ngày đi' : false,
+        }}
+      />
+
+      <HDropdown<BookingFormValues>
+        name="preferredTime"
+        label="Giờ đi"
+        placeholder={timeLoading ? 'Đang tải giờ...' : 'Chọn giờ đi'}
+        options={timeOptions}
+        disabled={isEditMode || timeLoading || timeOptions.length === 0}
+        helperText={timeHelperText}
+        rules={{
+          required: mode === 'add' ? 'Vui lòng chọn giờ đi' : false,
         }}
       />
 
@@ -241,30 +416,12 @@ export function BookingFormDialog({
         name="status"
         label="Trạng thái"
         options={[
-          {
-            label: 'Chờ xác nhận',
-            value: 'PENDING',
-          },
-          {
-            label: 'Đã xác nhận',
-            value: 'CONFIRMED',
-          },
-          {
-            label: 'Đã đón khách',
-            value: 'PICKED_UP',
-          },
-          {
-            label: 'Hoàn thành',
-            value: 'COMPLETED',
-          },
-          {
-            label: 'Đã hủy',
-            value: 'CANCELED',
-          },
-          {
-            label: 'Khách không đi',
-            value: 'NO_SHOW',
-          },
+          { label: 'Chờ xác nhận', value: 'PENDING' },
+          { label: 'Đã xác nhận', value: 'CONFIRMED' },
+          { label: 'Đã đón khách', value: 'PICKED_UP' },
+          { label: 'Hoàn thành', value: 'COMPLETED' },
+          { label: 'Đã hủy', value: 'CANCELED' },
+          { label: 'Khách không đi', value: 'NO_SHOW' },
         ]}
         rules={{
           required: 'Vui lòng chọn trạng thái',

@@ -1,7 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 import {
-  IsDateString,
   IsEnum,
   IsIn,
   IsInt,
@@ -11,7 +10,7 @@ import {
   Max,
   Min,
 } from 'class-validator';
-import { BookingStatus } from 'src/enums/booking-status.enum';
+import { RouteScheduleStatus } from 'src/enums/route-schedule-status.enum';
 
 function emptyToUndefined(value: unknown) {
   if (value === '' || value === null || value === undefined) {
@@ -21,7 +20,7 @@ function emptyToUndefined(value: unknown) {
   return value;
 }
 
-export class ListBookingsQueryDto {
+export class ListRouteSchedulesQueryDto {
   @ApiPropertyOptional({ example: 1 })
   @Transform(({ value }) => emptyToUndefined(value))
   @Type(() => Number)
@@ -39,7 +38,7 @@ export class ListBookingsQueryDto {
   @Max(100)
   limit?: number;
 
-  @ApiPropertyOptional({ example: '090' })
+  @ApiPropertyOptional({ example: 'Đà Nẵng' })
   @Transform(({ value }) => {
     const normalized = emptyToUndefined(value);
 
@@ -60,56 +59,22 @@ export class ListBookingsQueryDto {
   @IsUUID()
   companyId?: string;
 
-  @ApiPropertyOptional({ example: 'uuid-trip-id' })
+  @ApiPropertyOptional({ example: 'uuid-route-line-id' })
   @Transform(({ value }) => emptyToUndefined(value))
   @IsOptional()
   @IsUUID()
-  tripId?: string;
+  routeLineId?: string;
 
-  @ApiPropertyOptional({ example: 'uuid-route-id' })
+  @ApiPropertyOptional({ enum: RouteScheduleStatus })
   @Transform(({ value }) => emptyToUndefined(value))
   @IsOptional()
-  @IsUUID()
-  routeId?: string;
-
-  @ApiPropertyOptional({ example: 'uuid-driver-id' })
-  @Transform(({ value }) => emptyToUndefined(value))
-  @IsOptional()
-  @IsUUID()
-  driverId?: string;
-
-  @ApiPropertyOptional({ enum: BookingStatus })
-  @Transform(({ value }) => emptyToUndefined(value))
-  @IsOptional()
-  @IsEnum(BookingStatus)
-  status?: BookingStatus;
-
-  @ApiPropertyOptional({ example: '2026-06-10' })
-  @Transform(({ value }) => emptyToUndefined(value))
-  @IsOptional()
-  @IsDateString()
-  fromDate?: string;
-
-  @ApiPropertyOptional({ example: '2026-06-10' })
-  @Transform(({ value }) => emptyToUndefined(value))
-  @IsOptional()
-  @IsDateString()
-  toDate?: string;
+  @IsEnum(RouteScheduleStatus)
+  status?: RouteScheduleStatus;
 
   @ApiPropertyOptional({ example: 'createdAt' })
   @Transform(({ value }) => emptyToUndefined(value))
   @IsOptional()
-  @IsIn([
-    'bookingCode',
-    'customerName',
-    'customerPhone',
-    'passengerCount',
-    'seatPrice',
-    'totalAmount',
-    'status',
-    'createdAt',
-    'updatedAt',
-  ])
+  @IsIn(['name', 'startTime', 'endTime', 'status', 'createdAt', 'updatedAt'])
   sortBy?: string;
 
   @ApiPropertyOptional({ example: 'desc' })
@@ -125,10 +90,4 @@ export class ListBookingsQueryDto {
   @IsOptional()
   @IsIn(['asc', 'desc'])
   sortOrder?: 'asc' | 'desc';
-
-  @ApiPropertyOptional({ example: 'uuid-route-line-id' })
-  @Transform(({ value }) => emptyToUndefined(value))
-  @IsOptional()
-  @IsUUID()
-  routeLineId?: string;
 }

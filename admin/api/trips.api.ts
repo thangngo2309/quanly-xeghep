@@ -1,11 +1,11 @@
-import { cleanParams, http } from './http';
+import { cleanParams, http } from "./http";
 
 export type TripStatus =
-  | 'SCHEDULED'
-  | 'OPEN'
-  | 'RUNNING'
-  | 'COMPLETED'
-  | 'CANCELED';
+  | "SCHEDULED"
+  | "OPEN"
+  | "RUNNING"
+  | "COMPLETED"
+  | "CANCELED";
 
 export type TripItem = {
   id: string;
@@ -55,6 +55,15 @@ export type TripItem = {
   dropoffNote?: string | null;
   note?: string | null;
 
+  routeLineId?: string | null;
+  direction?: "OUTBOUND" | "RETURN" | null;
+  routeLine?: {
+    id: string;
+    name: string;
+    startPoint: string;
+    endPoint: string;
+  } | null;
+
   createdAt: string;
   updatedAt: string;
 };
@@ -67,11 +76,11 @@ export type TripListQuery = {
   routeId?: string;
   vehicleId?: string;
   driverId?: string;
-  status?: TripStatus | '';
+  status?: TripStatus | "";
   fromDate?: string;
   toDate?: string;
   sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
+  sortOrder?: "asc" | "desc";
 };
 
 export type TripListResponse = {
@@ -99,7 +108,7 @@ export type CreateTripPayload = {
 export type UpdateTripPayload = Partial<CreateTripPayload>;
 
 export async function getTripsApi(query: TripListQuery) {
-  const response = await http.get<TripListResponse>('/trips', {
+  const response = await http.get<TripListResponse>("/trips", {
     params: cleanParams(query),
   });
 
@@ -107,7 +116,7 @@ export async function getTripsApi(query: TripListQuery) {
 }
 
 export async function createTripApi(payload: CreateTripPayload) {
-  const response = await http.post<TripItem>('/trips', payload);
+  const response = await http.post<TripItem>("/trips", payload);
 
   return response.data;
 }

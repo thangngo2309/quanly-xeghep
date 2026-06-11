@@ -1,13 +1,13 @@
-'use client';
+"use client";
 
-import { Box, Button, Chip, Typography } from '@mui/material';
+import { Box, Button, Chip, Typography } from "@mui/material";
 import type {
   GridColDef,
   GridPaginationModel,
   GridSortModel,
-} from '@mui/x-data-grid';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { SubmitHandler, useForm } from 'react-hook-form';
+} from "@mui/x-data-grid";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { SubmitHandler, useForm } from "react-hook-form";
 
 import {
   createBookingApi,
@@ -18,31 +18,32 @@ import {
   type BookingStatus,
   type CreateBookingPayload,
   type UpdateBookingPayload,
-} from '@/api/bookings.api';
-import { getCompaniesApi } from '@/api/companies.api';
-import { getApiErrorMessage } from '@/api/http';
-import { getRoutesApi } from '@/api/routes.api';
-import { getTripsApi, type TripStatus } from '@/api/trips.api';
-import { getUsersApi, type UserRole } from '@/api/users.api';
-import { HDataTable } from '@/components/datatable';
-import { useHDialog } from '@/components/dialog';
-import { HDatePicker, HDropdown, HInput } from '@/components/form';
-import { getAuthUser } from '@/helper/auth-storage';
-import { AdminLayout } from '../layouts/admin';
+} from "@/api/bookings.api";
+import { getCompaniesApi } from "@/api/companies.api";
+import { getApiErrorMessage } from "@/api/http";
+import { getRoutesApi } from "@/api/routes.api";
+import { getTripsApi, type TripStatus } from "@/api/trips.api";
+import { getUsersApi, type UserRole } from "@/api/users.api";
+import { HDataTable } from "@/components/datatable";
+import { useHDialog } from "@/components/dialog";
+import { HDatePicker, HDropdown, HInput } from "@/components/form";
+import { getAuthUser } from "@/helper/auth-storage";
+import { AdminLayout } from "../layouts/admin";
 
 import {
   BookingFormDialog,
   type BookingFormValues,
   type SelectOption,
-} from './components/BookingFormDialog';
+} from "./components/BookingFormDialog";
+import { getRouteLinesApi } from "@/api/route-lines.api";
 
 type BookingSearchForm = {
   keyword: string;
   companyId: string;
-  tripId: string;
+  routeLineId: string;
   routeId: string;
   driverId: string;
-  status: BookingStatus | '';
+  status: BookingStatus | "";
   fromDate: string;
   toDate: string;
 };
@@ -51,63 +52,63 @@ function getTodayDateString() {
   const date = new Date();
 
   const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
 }
 
 function formatDateTime(value?: string | null) {
-  if (!value) return '-';
+  if (!value) return "-";
 
   const date = new Date(value);
 
   if (Number.isNaN(date.getTime())) {
-    return '-';
+    return "-";
   }
 
-  return new Intl.DateTimeFormat('vi-VN', {
-    hour: '2-digit',
-    minute: '2-digit',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
+  return new Intl.DateTimeFormat("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
   }).format(date);
 }
 
 function formatCurrency(value?: string | number | null) {
-  if (value === null || value === undefined || value === '') return '-';
+  if (value === null || value === undefined || value === "") return "-";
 
   const numberValue = Number(value);
 
-  if (Number.isNaN(numberValue)) return '-';
+  if (Number.isNaN(numberValue)) return "-";
 
-  return new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'VND',
+  return new Intl.NumberFormat("vi-VN", {
+    style: "currency",
+    currency: "VND",
     maximumFractionDigits: 0,
   }).format(numberValue);
 }
 
 function getBookingStatusLabel(status: BookingStatus | string) {
   switch (status) {
-    case 'PENDING':
-      return 'Chờ xác nhận';
+    case "PENDING":
+      return "Chờ xác nhận";
 
-    case 'CONFIRMED':
-      return 'Đã xác nhận';
+    case "CONFIRMED":
+      return "Đã xác nhận";
 
-    case 'PICKED_UP':
-      return 'Đã đón khách';
+    case "PICKED_UP":
+      return "Đã đón khách";
 
-    case 'COMPLETED':
-      return 'Hoàn thành';
+    case "COMPLETED":
+      return "Hoàn thành";
 
-    case 'CANCELED':
-      return 'Đã hủy';
+    case "CANCELED":
+      return "Đã hủy";
 
-    case 'NO_SHOW':
-      return 'Khách không đi';
+    case "NO_SHOW":
+      return "Khách không đi";
 
     default:
       return status;
@@ -116,26 +117,26 @@ function getBookingStatusLabel(status: BookingStatus | string) {
 
 function getBookingStatusColor(status: BookingStatus | string) {
   switch (status) {
-    case 'PENDING':
-      return 'warning';
+    case "PENDING":
+      return "warning";
 
-    case 'CONFIRMED':
-      return 'info';
+    case "CONFIRMED":
+      return "info";
 
-    case 'PICKED_UP':
-      return 'success';
+    case "PICKED_UP":
+      return "success";
 
-    case 'COMPLETED':
-      return 'default';
+    case "COMPLETED":
+      return "default";
 
-    case 'CANCELED':
-      return 'error';
+    case "CANCELED":
+      return "error";
 
-    case 'NO_SHOW':
-      return 'error';
+    case "NO_SHOW":
+      return "error";
 
     default:
-      return 'default';
+      return "default";
   }
 }
 
@@ -146,12 +147,12 @@ export default function BookingsPage() {
 
   const searchMethods = useForm<BookingSearchForm>({
     defaultValues: {
-      keyword: '',
-      companyId: '',
-      tripId: '',
-      routeId: '',
-      driverId: '',
-      status: '',
+      keyword: "",
+      companyId: "",
+      routeLineId: "",
+      routeId: "",
+      driverId: "",
+      status: "",
       fromDate: today,
       toDate: today,
     },
@@ -165,38 +166,37 @@ export default function BookingsPage() {
   const [loading, setLoading] = useState(false);
 
   const [companyOptions, setCompanyOptions] = useState<SelectOption[]>([]);
-  const [tripOptions, setTripOptions] = useState<SelectOption[]>([]);
+  const [routeLineOptions, setRouteLineOptions] = useState<SelectOption[]>([]);
   const [routeOptions, setRouteOptions] = useState<SelectOption[]>([]);
   const [driverOptions, setDriverOptions] = useState<SelectOption[]>([]);
 
   const [searchValues, setSearchValues] = useState<BookingSearchForm>({
-    keyword: '',
-    companyId: '',
-    tripId: '',
-    routeId: '',
-    driverId: '',
-    status: '',
+    keyword: "",
+    companyId: "",
+    routeLineId: "",
+    routeId: "",
+    driverId: "",
+    status: "",
     fromDate: today,
     toDate: today,
   });
 
-  const [paginationModel, setPaginationModel] =
-    useState<GridPaginationModel>({
-      page: 0,
-      pageSize: 10,
-    });
+  const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
+    page: 0,
+    pageSize: 10,
+  });
 
   const [sortModel, setSortModel] = useState<GridSortModel>([
     {
-      field: 'createdAt',
-      sort: 'desc',
+      field: "createdAt",
+      sort: "desc",
     },
   ]);
 
   const [formOpen, setFormOpen] = useState(false);
-  const [formMode, setFormMode] = useState<'add' | 'edit'>('add');
+  const [formMode, setFormMode] = useState<"add" | "edit">("add");
   const [selectedBooking, setSelectedBooking] = useState<BookingItem | null>(
-    null,
+    null
   );
   const [formLoading, setFormLoading] = useState(false);
 
@@ -212,7 +212,7 @@ export default function BookingsPage() {
   }, []);
 
   const loadCompanyOptions = useCallback(async () => {
-    if (currentRole !== 'SUPER_ADMIN') {
+    if (currentRole !== "SUPER_ADMIN") {
       setCompanyOptions([]);
       return;
     }
@@ -221,9 +221,9 @@ export default function BookingsPage() {
       const data = await getCompaniesApi({
         page: 1,
         limit: 100,
-        status: 'ACTIVE',
-        sortBy: 'name',
-        sortOrder: 'asc',
+        status: "ACTIVE",
+        sortBy: "name",
+        sortOrder: "asc",
       });
 
       setCompanyOptions(
@@ -231,11 +231,11 @@ export default function BookingsPage() {
           label: `${company.name} (${company.code})`,
           value: company.id,
           companyId: company.id,
-        })),
+        }))
       );
     } catch (error) {
       await dialog.error({
-        title: 'Lỗi tải nhà xe',
+        title: "Lỗi tải nhà xe",
         message: getApiErrorMessage(error),
       });
     }
@@ -245,59 +245,51 @@ export default function BookingsPage() {
     if (!authReady || !currentRole) return;
 
     try {
-      const [tripsData, routesData, driversData] = await Promise.all([
-        getTripsApi({
+      const [routeLinesData, routesData, driversData] = await Promise.all([
+        getRouteLinesApi({
           page: 1,
           limit: 100,
-          sortBy: 'departureTime',
-          sortOrder: 'desc',
+          status: "ACTIVE",
+          sortBy: "name",
+          sortOrder: "asc",
         }),
         getRoutesApi({
           page: 1,
           limit: 100,
-          status: 'ACTIVE',
-          sortBy: 'name',
-          sortOrder: 'asc',
+          status: "ACTIVE",
+          sortBy: "name",
+          sortOrder: "asc",
         }),
         getUsersApi({
           page: 1,
           limit: 100,
-          role: 'DRIVER',
-          status: 'ACTIVE',
-          sortBy: 'fullName',
-          sortOrder: 'asc',
+          role: "DRIVER",
+          status: "ACTIVE",
+          sortBy: "fullName",
+          sortOrder: "asc",
         }),
       ]);
 
-      setTripOptions(
-        tripsData.items.map((trip) => {
-          const routeName = trip.route?.name || 'Chưa có tuyến';
-          const vehiclePlate = trip.vehicle?.licensePlate || 'Chưa có xe';
-          const departure = formatDateTime(trip.departureTime);
-          const companyName = trip.company?.name;
-
-          return {
-            label:
-              currentRole === 'SUPER_ADMIN' && companyName
-                ? `${routeName} - ${departure} - ${vehiclePlate} - ${companyName}`
-                : `${routeName} - ${departure} - ${vehiclePlate}`,
-            value: trip.id,
-            companyId: trip.companyId,
-            routeId: trip.routeId,
-            driverId: trip.driverId,
-          };
-        }),
+      setRouteLineOptions(
+        routeLinesData.items.map((routeLine) => ({
+          label:
+            currentRole === "SUPER_ADMIN" && routeLine.company
+              ? `${routeLine.name} - ${routeLine.company.name}`
+              : routeLine.name,
+          value: routeLine.id,
+          companyId: routeLine.companyId,
+        }))
       );
 
       setRouteOptions(
         routesData.items.map((route) => ({
           label:
-            currentRole === 'SUPER_ADMIN' && route.company
+            currentRole === "SUPER_ADMIN" && route.company
               ? `${route.name} - ${route.company.name}`
               : route.name,
           value: route.id,
           companyId: route.companyId,
-        })),
+        }))
       );
 
       setDriverOptions(
@@ -305,11 +297,11 @@ export default function BookingsPage() {
           label: `${driver.fullName} - ${driver.phone}`,
           value: driver.id,
           companyId: driver.company?.id || undefined,
-        })),
+        }))
       );
     } catch (error) {
       await dialog.error({
-        title: 'Lỗi tải dữ liệu chọn',
+        title: "Lỗi tải dữ liệu chọn",
         message: getApiErrorMessage(error),
       });
     }
@@ -334,17 +326,17 @@ export default function BookingsPage() {
       const data = await getBookingsApi({
         page: paginationModel.page + 1,
         limit: paginationModel.pageSize,
-        sortBy: sort?.field || 'createdAt',
-        sortOrder: (sort?.sort || 'desc') as 'asc' | 'desc',
+        sortBy: sort?.field || "createdAt",
+        sortOrder: (sort?.sort || "desc") as "asc" | "desc",
         keyword: searchValues.keyword || undefined,
         companyId:
-          currentRole === 'SUPER_ADMIN'
+          currentRole === "SUPER_ADMIN"
             ? searchValues.companyId || undefined
             : undefined,
-        tripId: searchValues.tripId || undefined,
+        routeLineId: searchValues.routeLineId || undefined,
         routeId: searchValues.routeId || undefined,
         driverId:
-          currentRole !== 'DRIVER'
+          currentRole !== "DRIVER"
             ? searchValues.driverId || undefined
             : undefined,
         status: searchValues.status || undefined,
@@ -356,7 +348,7 @@ export default function BookingsPage() {
       setRowCount(data.total);
     } catch (error) {
       await dialog.error({
-        title: 'Lỗi tải booking',
+        title: "Lỗi tải booking",
         message: getApiErrorMessage(error),
       });
     } finally {
@@ -375,7 +367,7 @@ export default function BookingsPage() {
     searchValues.routeId,
     searchValues.status,
     searchValues.toDate,
-    searchValues.tripId,
+    searchValues.routeLineId,
     sortModel,
   ]);
 
@@ -393,7 +385,7 @@ export default function BookingsPage() {
         return model;
       });
     },
-    [],
+    []
   );
 
   const handleSortModelChange = useCallback((model: GridSortModel) => {
@@ -423,12 +415,12 @@ export default function BookingsPage() {
 
   function handleResetSearch() {
     const emptyValues: BookingSearchForm = {
-      keyword: '',
-      companyId: '',
-      tripId: '',
-      routeId: '',
-      driverId: '',
-      status: '',
+      keyword: "",
+      companyId: "",
+      routeLineId: "",
+      routeId: "",
+      driverId: "",
+      status: "",
       fromDate: today,
       toDate: today,
     };
@@ -444,23 +436,23 @@ export default function BookingsPage() {
 
   const openCreateDialog = useCallback(() => {
     setSelectedBooking(null);
-    setFormMode('add');
+    setFormMode("add");
     setFormOpen(true);
   }, []);
 
   const openEditDialog = useCallback((booking: BookingItem) => {
     setSelectedBooking(booking);
-    setFormMode('edit');
+    setFormMode("edit");
     setFormOpen(true);
   }, []);
 
   const handleDelete = useCallback(
     async (booking: BookingItem) => {
       const ok = await dialog.confirm({
-        title: 'Xác nhận xóa',
+        title: "Xác nhận xóa",
         message: `Bạn có chắc chắn muốn xóa booking "${booking.bookingCode}" không?`,
-        confirmText: 'Xóa',
-        cancelText: 'Hủy',
+        confirmText: "Xóa",
+        cancelText: "Hủy",
       });
 
       if (!ok) return;
@@ -469,30 +461,39 @@ export default function BookingsPage() {
         await deleteBookingApi(booking.id);
 
         await dialog.info({
-          title: 'Thành công',
-          message: 'Đã xóa booking thành công.',
+          title: "Thành công",
+          message: "Đã xóa booking thành công.",
         });
 
         loadData();
         loadSelectOptions();
       } catch (error) {
         await dialog.error({
-          title: 'Lỗi xóa booking',
+          title: "Lỗi xóa booking",
           message: getApiErrorMessage(error),
         });
       }
     },
-    [dialog, loadData, loadSelectOptions],
+    [dialog, loadData, loadSelectOptions]
   );
 
   const handleSubmitBookingForm: SubmitHandler<BookingFormValues> = async (
-    values,
+    values
   ) => {
     setFormLoading(true);
 
     try {
       const payload: CreateBookingPayload | UpdateBookingPayload = {
-        tripId: values.tripId,
+        tripId:
+          formMode === "edit" && selectedBooking
+            ? selectedBooking.tripId
+            : undefined,
+
+        routeLineId: formMode === "add" ? values.routeLineId : undefined,
+        direction: formMode === "add" ? values.direction : undefined,
+        travelDate: formMode === "add" ? values.travelDate : undefined,
+        preferredTime: formMode === "add" ? values.preferredTime : undefined,
+
         customerName: values.customerName,
         customerPhone: values.customerPhone,
         customerEmail: values.customerEmail || undefined,
@@ -508,7 +509,7 @@ export default function BookingsPage() {
         note: values.note || undefined,
       };
 
-      if (formMode === 'add') {
+      if (formMode === "add") {
         await createBookingApi(payload as CreateBookingPayload);
       } else if (selectedBooking) {
         await updateBookingApi(selectedBooking.id, payload);
@@ -517,18 +518,18 @@ export default function BookingsPage() {
       setFormOpen(false);
 
       await dialog.info({
-        title: 'Thành công',
+        title: "Thành công",
         message:
-          formMode === 'add'
-            ? 'Tạo booking thành công.'
-            : 'Cập nhật booking thành công.',
+          formMode === "add"
+            ? "Tạo booking thành công."
+            : "Cập nhật booking thành công.",
       });
 
       loadData();
       loadSelectOptions();
     } catch (error) {
       await dialog.error({
-        title: 'Lỗi lưu booking',
+        title: "Lỗi lưu booking",
         message: getApiErrorMessage(error),
       });
     } finally {
@@ -539,23 +540,23 @@ export default function BookingsPage() {
   const columns = useMemo<GridColDef<BookingItem>[]>(() => {
     const baseColumns: GridColDef<BookingItem>[] = [
       {
-        field: 'bookingCode',
-        headerName: 'Mã booking',
+        field: "bookingCode",
+        headerName: "Mã booking",
         width: 170,
       },
     ];
 
-    if (currentRole === 'SUPER_ADMIN') {
+    if (currentRole === "SUPER_ADMIN") {
       baseColumns.push({
-        field: 'company',
-        headerName: 'Nhà xe',
+        field: "company",
+        headerName: "Nhà xe",
         flex: 1,
         minWidth: 180,
         sortable: false,
         renderCell: (params) => {
           const company = params.row.company;
 
-          if (!company) return '-';
+          if (!company) return "-";
 
           return `${company.name} (${company.code})`;
         },
@@ -564,60 +565,60 @@ export default function BookingsPage() {
 
     baseColumns.push(
       {
-        field: 'customerName',
-        headerName: 'Khách hàng',
+        field: "customerName",
+        headerName: "Khách hàng",
         flex: 1,
         minWidth: 190,
       },
       {
-        field: 'customerPhone',
-        headerName: 'SĐT',
+        field: "customerPhone",
+        headerName: "SĐT",
         width: 130,
       },
       {
-        field: 'trip',
-        headerName: 'Chuyến',
+        field: "trip",
+        headerName: "Chuyến",
         flex: 1,
         minWidth: 240,
         sortable: false,
         renderCell: (params) => {
           const trip = params.row.trip;
 
-          if (!trip) return '-';
+          if (!trip) return "-";
 
-          return `${trip.route?.name || '-'} - ${formatDateTime(
-            trip.departureTime,
+          return `${trip.route?.name || "-"} - ${formatDateTime(
+            trip.departureTime
           )}`;
         },
       },
       {
-        field: 'driver',
-        headerName: 'Tài xế',
+        field: "driver",
+        headerName: "Tài xế",
         flex: 1,
         minWidth: 190,
         sortable: false,
         renderCell: (params) => {
           const driver = params.row.trip?.driver;
 
-          if (!driver) return '-';
+          if (!driver) return "-";
 
           return `${driver.fullName} - ${driver.phone}`;
         },
       },
       {
-        field: 'passengerCount',
-        headerName: 'Số khách',
+        field: "passengerCount",
+        headerName: "Số khách",
         width: 100,
       },
       {
-        field: 'totalAmount',
-        headerName: 'Tổng tiền',
+        field: "totalAmount",
+        headerName: "Tổng tiền",
         width: 140,
         renderCell: (params) => formatCurrency(params.value as any),
       },
       {
-        field: 'status',
-        headerName: 'Trạng thái',
+        field: "status",
+        headerName: "Trạng thái",
         width: 150,
         renderCell: (params) => {
           const status = String(params.value);
@@ -630,23 +631,23 @@ export default function BookingsPage() {
             />
           );
         },
-      },
+      }
     );
 
-    if (currentRole !== 'DRIVER') {
+    if (currentRole !== "DRIVER") {
       baseColumns.push({
-        field: 'actions',
-        headerName: 'Thao tác',
+        field: "actions",
+        headerName: "Thao tác",
         width: 180,
         sortable: false,
         filterable: false,
         renderCell: (params) => (
           <Box
             sx={{
-              display: 'flex',
+              display: "flex",
               gap: 1,
-              alignItems: 'center',
-              height: '100%',
+              alignItems: "center",
+              height: "100%",
             }}
           >
             <Button
@@ -687,7 +688,7 @@ export default function BookingsPage() {
             Quản lý booking
           </Typography>
 
-          <Typography sx={{ color: 'text.secondary', mt: 0.75 }}>
+          <Typography sx={{ color: "text.secondary", mt: 0.75 }}>
             Quản lý đặt chỗ, số khách, điểm đón trả và trạng thái booking theo
             từng chuyến xe.
           </Typography>
@@ -711,7 +712,7 @@ export default function BookingsPage() {
           minHeight={260}
           maxHeight={460}
           actions={
-            currentRole !== 'DRIVER' ? (
+            currentRole !== "DRIVER" ? (
               <Button
                 variant="contained"
                 onClick={(event) => {
@@ -730,7 +731,7 @@ export default function BookingsPage() {
                 label="Tìm mã, tên khách, SĐT, tuyến, xe"
               />
 
-              {currentRole === 'SUPER_ADMIN' && (
+              {currentRole === "SUPER_ADMIN" && (
                 <HDropdown<BookingSearchForm>
                   name="companyId"
                   label="Nhà xe"
@@ -739,13 +740,13 @@ export default function BookingsPage() {
                 />
               )}
 
-              {currentRole !== 'DRIVER' && (
+              {currentRole !== "DRIVER" && (
                 <>
                   <HDropdown<BookingSearchForm>
-                    name="tripId"
-                    label="Chuyến xe"
-                    placeholder="Tất cả chuyến"
-                    options={tripOptions}
+                    name="routeLineId"
+                    label="Tuyến khai thác"
+                    placeholder="Tất cả tuyến"
+                    options={routeLineOptions}
                   />
 
                   <HDropdown<BookingSearchForm>
@@ -770,41 +771,35 @@ export default function BookingsPage() {
                 placeholder="Tất cả trạng thái"
                 options={[
                   {
-                    label: 'Chờ xác nhận',
-                    value: 'PENDING',
+                    label: "Chờ xác nhận",
+                    value: "PENDING",
                   },
                   {
-                    label: 'Đã xác nhận',
-                    value: 'CONFIRMED',
+                    label: "Đã xác nhận",
+                    value: "CONFIRMED",
                   },
                   {
-                    label: 'Đã đón khách',
-                    value: 'PICKED_UP',
+                    label: "Đã đón khách",
+                    value: "PICKED_UP",
                   },
                   {
-                    label: 'Hoàn thành',
-                    value: 'COMPLETED',
+                    label: "Hoàn thành",
+                    value: "COMPLETED",
                   },
                   {
-                    label: 'Đã hủy',
-                    value: 'CANCELED',
+                    label: "Đã hủy",
+                    value: "CANCELED",
                   },
                   {
-                    label: 'Khách không đi',
-                    value: 'NO_SHOW',
+                    label: "Khách không đi",
+                    value: "NO_SHOW",
                   },
                 ]}
               />
 
-              <HDatePicker<BookingSearchForm>
-                name="fromDate"
-                label="Từ ngày"
-              />
+              <HDatePicker<BookingSearchForm> name="fromDate" label="Từ ngày" />
 
-              <HDatePicker<BookingSearchForm>
-                name="toDate"
-                label="Đến ngày"
-              />
+              <HDatePicker<BookingSearchForm> name="toDate" label="Đến ngày" />
             </>
           }
         />
@@ -816,7 +811,7 @@ export default function BookingsPage() {
           loading={formLoading}
           currentRole={currentRole}
           companyOptions={companyOptions}
-          tripOptions={tripOptions}
+          routeLineOptions={routeLineOptions}
           onClose={() => setFormOpen(false)}
           onSubmit={handleSubmitBookingForm}
         />

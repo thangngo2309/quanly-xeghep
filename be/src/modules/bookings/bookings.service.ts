@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import type { CurrentUserData } from '../../common/decorators/current-user.decorator';
 import { Company } from '../companies/entities/company.entity';
 import { Trip } from '../trips/entities/trip.entity';
@@ -16,6 +16,7 @@ import { Booking } from './entities/booking.entity';
 import { BookingStatus } from 'src/enums/booking-status.enum';
 import { UserRole } from 'src/enums/user.enums';
 import { TripStatus } from 'src/enums/trip-status.enum';
+import { AvailableBookingTimesQueryDto } from './dto/available-booking-times-query.dto';
 
 @Injectable()
 export class BookingsService {
@@ -31,6 +32,207 @@ export class BookingsService {
     @InjectRepository(Company)
     private readonly companyRepository: Repository<Company>,
   ) {}
+
+  private buildVietnamDateTime(dateString: string, timeString: string) {
+    return new Date(`${dateString}T${timeString}:00+07:00`);
+  }
+  
+  private getVietnamDateRange(dateString: string) {
+    return {
+      start: new Date(`${dateString}T00:00:00+07:00`),
+      end: new Date(`${dateString}T23:59:59+07:00`),
+    };
+  }
+  
+  private formatTimeInVietnam(value: Date) {
+    const vietnamDate = new Date(value.getTime() + 7 * 60 * 60 * 1000);
+    return vietnamDate.toISOString().slice(11, 16);
+  }
+  
+  private async resolveTripForBooking(
+    dto: CreateBookingDto,
+    currentUser: CurrentUserData,
+    passengerCount: number,
+    manager: EntityManager,
+  ) {
+    const tripRepository = manager.getRepository(Trip);
+  
+    if (dto.tripId) {
+      const trip = await tripRepository.findOne({
+        where: {
+          id: dto.tripId,
+        },
+        lock: {
+          mode: 'pessimistic_write',
+        },
+      });
+  
+      if (!trip) {
+        throw new BadRequestException('Chuyến xe không tồn tại');
+      }
+  
+      this.assertCanAccessCompany(currentUser, trip.companyId);
+      this.assertTripCanReceiveBooking(trip);
+  
+      return trip;
+    }
+  
+    if (
+      !dto.routeLineId ||
+      !dto.direction ||
+      !dto.travelDate ||
+      !dto.preferredTime
+    ) {
+      throw new BadRequestException(
+        'Vui lòng chọn tuyến khai thác, chiều đi, ngày đi và giờ đi',
+      );
+    }
+  
+    const departureTime = this.buildVietnamDateTime(
+      dto.travelDate,
+      dto.preferredTime,
+    );
+  
+    const nextMinute = new Date(departureTime.getTime() + 60 * 1000);
+  
+    const qb = tripRepository
+      .createQueryBuilder('trip')
+      .setLock('pessimistic_write')
+      .where('trip.route_line_id = :routeLineId', {
+        routeLineId: dto.routeLineId,
+      })
+      .andWhere('trip.direction = :direction', {
+        direction: dto.direction,
+      })
+      .andWhere('trip.departure_time >= :departureTime', {
+        departureTime,
+      })
+      .andWhere('trip.departure_time < :nextMinute', {
+        nextMinute,
+      })
+      .andWhere('trip.status IN (:...statuses)', {
+        statuses: [TripStatus.SCHEDULED, TripStatus.OPEN],
+      })
+      .andWhere('(trip.total_seats - trip.booked_seats) >= :passengerCount', {
+        passengerCount,
+      });
+  
+    if (currentUser.role === UserRole.ADMIN) {
+      this.assertAdminHasCompany(currentUser);
+  
+      qb.andWhere('trip.company_id = :companyId', {
+        companyId: currentUser.companyId,
+      });
+    }
+  
+    qb.orderBy('trip.booked_seats', 'ASC').addOrderBy('trip.created_at', 'ASC');
+  
+    const trip = await qb.getOne();
+  
+    if (!trip) {
+      throw new BadRequestException(
+        'Không còn chuyến phù hợp với tuyến, ngày, giờ và số khách đã chọn',
+      );
+    }
+  
+    this.assertCanAccessCompany(currentUser, trip.companyId);
+    this.assertTripCanReceiveBooking(trip);
+  
+    return trip;
+  }
+  
+  async findAvailableTimes(
+    query: AvailableBookingTimesQueryDto,
+    currentUser: CurrentUserData,
+  ) {
+    const passengerCount = Number(query.passengerCount || 1);
+    const { start, end } = this.getVietnamDateRange(query.travelDate);
+  
+    const qb = this.tripRepository
+      .createQueryBuilder('trip')
+      .leftJoinAndSelect('trip.route', 'route')
+      .leftJoinAndSelect('trip.vehicle', 'vehicle')
+      .leftJoinAndSelect('trip.driver', 'driver')
+      .where('trip.route_line_id = :routeLineId', {
+        routeLineId: query.routeLineId,
+      })
+      .andWhere('trip.direction = :direction', {
+        direction: query.direction,
+      })
+      .andWhere('trip.departure_time >= :start', {
+        start,
+      })
+      .andWhere('trip.departure_time <= :end', {
+        end,
+      })
+      .andWhere('trip.status IN (:...statuses)', {
+        statuses: [TripStatus.SCHEDULED, TripStatus.OPEN],
+      })
+      .andWhere('(trip.total_seats - trip.booked_seats) >= :passengerCount', {
+        passengerCount,
+      });
+  
+    if (currentUser.role === UserRole.ADMIN) {
+      this.assertAdminHasCompany(currentUser);
+  
+      qb.andWhere('trip.company_id = :companyId', {
+        companyId: currentUser.companyId,
+      });
+    }
+  
+    qb.orderBy('trip.departure_time', 'ASC');
+  
+    const trips = await qb.getMany();
+  
+    const grouped = new Map<
+      string,
+      {
+        time: string;
+        tripCount: number;
+        availableSeats: number;
+        vehicles: string[];
+        drivers: string[];
+      }
+    >();
+  
+    for (const trip of trips) {
+      const time = this.formatTimeInVietnam(trip.departureTime);
+      const availableSeats = Math.max(
+        0,
+        Number(trip.totalSeats || 0) - Number(trip.bookedSeats || 0),
+      );
+  
+      const current = grouped.get(time) || {
+        time,
+        tripCount: 0,
+        availableSeats: 0,
+        vehicles: [],
+        drivers: [],
+      };
+  
+      current.tripCount += 1;
+      current.availableSeats += availableSeats;
+  
+      if (trip.vehicle?.licensePlate) {
+        current.vehicles.push(trip.vehicle.licensePlate);
+      }
+  
+      if (trip.driver?.fullName) {
+        current.drivers.push(trip.driver.fullName);
+      }
+  
+      grouped.set(time, current);
+    }
+  
+    return {
+      items: Array.from(grouped.values()).map((item) => ({
+        ...item,
+        label: `${item.time} - còn ${item.availableSeats} ghế`,
+        vehicles: [...new Set(item.vehicles)],
+        drivers: [...new Set(item.drivers)],
+      })),
+    };
+  }
 
   private generateBookingCode() {
     const now = new Date();
@@ -118,50 +320,38 @@ export class BookingsService {
     return this.dataSource.transaction(async (manager) => {
       const tripRepository = manager.getRepository(Trip);
       const bookingRepository = manager.getRepository(Booking);
-
-      const trip = await tripRepository.findOne({
-        where: {
-          id: dto.tripId,
-        },
-        lock: {
-          mode: 'pessimistic_write',
-        },
-      });
-
-      if (!trip) {
-        throw new BadRequestException('Chuyến xe không tồn tại');
-      }
-
-      this.assertCanAccessCompany(currentUser, trip.companyId);
-      this.assertTripCanReceiveBooking(trip);
-
+  
       const passengerCount = dto.passengerCount || 1;
       const status = dto.status || BookingStatus.CONFIRMED;
-
+  
+      const trip = await this.resolveTripForBooking(
+        dto,
+        currentUser,
+        passengerCount,
+        manager,
+      );
+  
       if (this.isSeatCountedStatus(status)) {
         const availableSeats = trip.totalSeats - trip.bookedSeats;
-
+  
         if (passengerCount > availableSeats) {
           throw new BadRequestException(
             `Chuyến xe chỉ còn ${availableSeats} ghế trống`,
           );
         }
-
+  
         trip.bookedSeats += passengerCount;
       }
-
+  
       const seatPrice =
         dto.seatPrice !== undefined && dto.seatPrice !== null
           ? dto.seatPrice
           : trip.basePrice !== null
             ? Number(trip.basePrice)
             : null;
-
-      const totalAmount = this.calculateTotalAmount(
-        passengerCount,
-        seatPrice,
-      );
-
+  
+      const totalAmount = this.calculateTotalAmount(passengerCount, seatPrice);
+  
       const booking = bookingRepository.create({
         bookingCode: this.generateBookingCode(),
         companyId: trip.companyId,
@@ -179,11 +369,11 @@ export class BookingsService {
         status,
         note: dto.note || null,
       });
-
+  
       await tripRepository.save(trip);
-
+  
       const savedBooking = await bookingRepository.save(booking);
-
+  
       return this.findOne(savedBooking.id, currentUser);
     });
   }
@@ -275,6 +465,12 @@ export class BookingsService {
     if (query.status) {
       qb.andWhere('booking.status = :status', {
         status: query.status,
+      });
+    }
+
+    if (query.routeLineId) {
+      qb.andWhere('trip.route_line_id = :routeLineId', {
+        routeLineId: query.routeLineId,
       });
     }
 
