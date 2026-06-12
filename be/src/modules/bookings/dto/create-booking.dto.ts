@@ -5,6 +5,9 @@ import {
   IsEmail,
   IsEnum,
   IsInt,
+  IsLatitude,
+  IsLongitude,
+  IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
@@ -94,11 +97,13 @@ export class CreateBookingDto {
   passengerCount?: number;
 
   @ApiPropertyOptional({
-    example: '12 Nguyễn Huệ, Huế',
+    example: '12 Nguyễn Huệ, Đà Nẵng',
   })
-  @IsOptional()
   @IsString()
-  pickupAddress?: string;
+  @IsNotEmpty({
+    message: 'Vui lòng nhập địa điểm đón khách',
+  })
+  pickupAddress: string;
 
   @ApiPropertyOptional({
     example: 'Bến xe trung tâm Đà Nẵng',
@@ -106,6 +111,38 @@ export class CreateBookingDto {
   @IsOptional()
   @IsString()
   dropoffAddress?: string;
+
+  @ApiPropertyOptional({
+    example: 16.047079,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsLatitude()
+  pickupLat?: number;
+
+  @ApiPropertyOptional({
+    example: 108.20623,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsLongitude()
+  pickupLng?: number;
+
+  @ApiPropertyOptional({
+    example: 16.463713,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsLatitude()
+  dropoffLat?: number;
+
+  @ApiPropertyOptional({
+    example: 107.590866,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsLongitude()
+  dropoffLng?: number;
 
   @ApiPropertyOptional()
   @IsOptional()

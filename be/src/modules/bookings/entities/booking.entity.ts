@@ -100,6 +100,34 @@ import { BookingStatus } from 'src/enums/booking-status.enum';
       nullable: true,
     })
     dropoffAddress: string | null;
+
+    @Column({
+      name: 'pickup_lat',
+      type: 'double precision',
+      nullable: true,
+    })
+    pickupLat: number | null;
+    
+    @Column({
+      name: 'pickup_lng',
+      type: 'double precision',
+      nullable: true,
+    })
+    pickupLng: number | null;
+    
+    @Column({
+      name: 'dropoff_lat',
+      type: 'double precision',
+      nullable: true,
+    })
+    dropoffLat: number | null;
+    
+    @Column({
+      name: 'dropoff_lng',
+      type: 'double precision',
+      nullable: true,
+    })
+    dropoffLng: number | null;
   
     @Column({
       name: 'pickup_note',

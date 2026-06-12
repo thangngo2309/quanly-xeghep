@@ -29,7 +29,7 @@ import { getUsersApi, type UserRole } from '@/api/users.api';
 import { getVehiclesApi } from '@/api/vehicles.api';
 import { HDataTable } from '@/components/datatable';
 import { useHDialog } from '@/components/dialog';
-import { HDropdown, HInput } from '@/components/form';
+import { HAutocomplete, HDropdown, HInput } from '@/components/form';
 import { getAuthUser } from '@/helper/auth-storage';
 import { AdminLayout } from '../layouts/admin';
 
@@ -789,7 +789,7 @@ export default function RouteSchedulesPage() {
               />
 
               {currentRole === 'SUPER_ADMIN' && (
-                <HDropdown<RouteScheduleSearchForm>
+                <HAutocomplete<RouteScheduleSearchForm>
                   name="companyId"
                   label="Nhà xe"
                   placeholder="Tất cả nhà xe"
@@ -797,7 +797,7 @@ export default function RouteSchedulesPage() {
                 />
               )}
 
-              <HDropdown<RouteScheduleSearchForm>
+              <HAutocomplete<RouteScheduleSearchForm>
                 name="routeLineId"
                 label="Tuyến khai thác"
                 placeholder="Tất cả tuyến"

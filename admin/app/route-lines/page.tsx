@@ -24,7 +24,7 @@ import {
 import { getAuthUser } from '@/helper/auth-storage';
 import { HDataTable } from '@/components/datatable';
 import { useHDialog } from '@/components/dialog';
-import { HDropdown, HInput } from '@/components/form';
+import { HAutocomplete, HDropdown, HInput } from '@/components/form';
 import { AdminLayout } from '../layouts/admin';
 
 import {
@@ -509,7 +509,7 @@ export default function RouteLinesPage() {
               />
 
               {currentRole === 'SUPER_ADMIN' && (
-                <HDropdown<RouteLineSearchForm>
+                <HAutocomplete<RouteLineSearchForm>
                   name="companyId"
                   label="Nhà xe"
                   placeholder="Tất cả nhà xe"

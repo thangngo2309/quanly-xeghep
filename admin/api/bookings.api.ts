@@ -1,14 +1,14 @@
-import { cleanParams, http } from './http';
-import type { RouteDirection } from './route-lines.api';
-import type { TripItem } from './trips.api';
+import { cleanParams, http } from "./http";
+import type { RouteDirection } from "./route-lines.api";
+import type { TripItem } from "./trips.api";
 
 export type BookingStatus =
-  | 'PENDING'
-  | 'CONFIRMED'
-  | 'PICKED_UP'
-  | 'COMPLETED'
-  | 'CANCELED'
-  | 'NO_SHOW';
+  | "PENDING"
+  | "CONFIRMED"
+  | "PICKED_UP"
+  | "COMPLETED"
+  | "CANCELED"
+  | "NO_SHOW";
 
 export type BookingItem = {
   id: string;
@@ -32,6 +32,10 @@ export type BookingItem = {
 
   pickupAddress?: string | null;
   dropoffAddress?: string | null;
+  pickupLat?: number | null;
+  pickupLng?: number | null;
+  dropoffLat?: number | null;
+  dropoffLng?: number | null;
   pickupNote?: string | null;
   dropoffNote?: string | null;
 
@@ -54,11 +58,11 @@ export type BookingListQuery = {
   routeLineId?: string;
   routeId?: string;
   driverId?: string;
-  status?: BookingStatus | '';
+  status?: BookingStatus | "";
   fromDate?: string;
   toDate?: string;
   sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
+  sortOrder?: "asc" | "desc";
 };
 
 export type BookingListResponse = {
@@ -101,10 +105,16 @@ export type CreateBookingPayload = {
   customerPhone: string;
   customerEmail?: string;
   passengerCount?: number;
-  pickupAddress?: string;
+  
+  pickupAddress: string;
+  pickupLat?: number;
+  pickupLng?: number;
   dropoffAddress?: string;
+  dropoffLat?: number;
+  dropoffLng?: number;
   pickupNote?: string;
   dropoffNote?: string;
+
   seatPrice?: number;
   status?: BookingStatus;
   note?: string;
@@ -113,7 +123,7 @@ export type CreateBookingPayload = {
 export type UpdateBookingPayload = Partial<CreateBookingPayload>;
 
 export async function getBookingsApi(query: BookingListQuery) {
-  const response = await http.get<BookingListResponse>('/bookings', {
+  const response = await http.get<BookingListResponse>("/bookings", {
     params: cleanParams(query),
   });
 
@@ -121,27 +131,27 @@ export async function getBookingsApi(query: BookingListQuery) {
 }
 
 export async function getAvailableBookingTimesApi(
-  query: AvailableBookingTimesQuery,
+  query: AvailableBookingTimesQuery
 ) {
   const response = await http.get<AvailableBookingTimesResponse>(
-    '/bookings/available-times',
+    "/bookings/available-times",
     {
       params: cleanParams(query),
-    },
+    }
   );
 
   return response.data;
 }
 
 export async function createBookingApi(payload: CreateBookingPayload) {
-  const response = await http.post<BookingItem>('/bookings', payload);
+  const response = await http.post<BookingItem>("/bookings", payload);
 
   return response.data;
 }
 
 export async function updateBookingApi(
   id: string,
-  payload: UpdateBookingPayload,
+  payload: UpdateBookingPayload
 ) {
   const response = await http.patch<BookingItem>(`/bookings/${id}`, payload);
 

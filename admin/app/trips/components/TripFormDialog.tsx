@@ -6,7 +6,7 @@ import { SubmitHandler, useForm } from 'react-hook-form';
 import type { TripItem, TripStatus } from '@/api/trips.api';
 import type { UserRole } from '@/api/users.api';
 import { HFormDialog } from '@/components/dialog';
-import { HDropdown, HInput } from '@/components/form';
+import { HAutocomplete, HDropdown, HInput } from '@/components/form';
 
 export type SelectOption = {
   label: string;
@@ -201,7 +201,7 @@ export function TripFormDialog({
       maxWidth="md"
     >
       {isSystemAdmin && (
-        <HDropdown<TripFormValues>
+        <HAutocomplete<TripFormValues>
           name="companyId"
           label="Nhà xe"
           placeholder="Chọn nhà xe"
@@ -224,7 +224,7 @@ export function TripFormDialog({
         />
       )}
 
-      <HDropdown<TripFormValues>
+      <HAutocomplete<TripFormValues>
         name="routeId"
         label="Tuyến đường"
         placeholder="Chọn tuyến đường"
@@ -242,7 +242,7 @@ export function TripFormDialog({
         }}
       />
 
-      <HDropdown<TripFormValues>
+      <HAutocomplete<TripFormValues>
         name="vehicleId"
         label="Xe"
         placeholder="Chọn xe"
@@ -260,7 +260,7 @@ export function TripFormDialog({
         }}
       />
 
-      <HDropdown<TripFormValues>
+      <HAutocomplete<TripFormValues>
         name="driverId"
         label="Tài xế"
         placeholder="Tự lấy theo xe hoặc chọn tài xế"

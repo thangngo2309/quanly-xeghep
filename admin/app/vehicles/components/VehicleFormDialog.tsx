@@ -9,7 +9,7 @@ import type {
   VehicleType,
 } from '@/api/vehicles.api';
 import { HFormDialog } from '@/components/dialog';
-import { HDatePicker, HDropdown, HInput } from '@/components/form';
+import { HAutocomplete, HDatePicker, HDropdown, HInput } from '@/components/form';
 import type { UserRole } from '@/api/users.api';
 
 export type VehicleFormValues = {
@@ -113,7 +113,7 @@ export function VehicleFormDialog({
       maxWidth="md"
     >
       {isSystemAdmin && (
-        <HDropdown<VehicleFormValues>
+        <HAutocomplete<VehicleFormValues>
           name="companyId"
           label="Nhà xe"
           placeholder="Chọn nhà xe"

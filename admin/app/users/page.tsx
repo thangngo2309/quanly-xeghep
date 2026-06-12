@@ -22,7 +22,7 @@ import {
 } from "@/api/users.api";
 import { getApiErrorMessage } from "@/api/http";
 import { HDataTable } from "@/components/datatable";
-import { HInput, HDropdown } from "@/components/form";
+import { HInput, HDropdown, HAutocomplete } from "@/components/form";
 import { useHDialog } from "@/components/dialog";
 import {
   UserFormDialog,
@@ -34,6 +34,7 @@ import { getCompaniesApi } from "@/api/companies.api";
 
 type UserSearchForm = {
   keyword: string;
+  companyId: string;
   status: UserStatus | "";
 };
 
@@ -98,6 +99,7 @@ function normalizeUserResponse(
     limit: number;
     keyword: string;
     role: UserRole | "";
+    companyId?: string;
     status: UserStatus | "";
     sortBy?: string;
     sortOrder?: "asc" | "desc";
@@ -145,6 +147,15 @@ function normalizeUserResponse(
     });
   }
 
+  if (fallback.companyId) {
+    items = items.filter((item) => {
+      return (
+        item.companyId === fallback.companyId ||
+        item.company?.id === fallback.companyId
+      );
+    });
+  }
+
   const total = items.length;
   const start = (fallback.page - 1) * fallback.limit;
   const end = start + fallback.limit;
@@ -161,6 +172,7 @@ export default function UsersPage() {
   const searchMethods = useForm<UserSearchForm>({
     defaultValues: {
       keyword: "",
+      companyId: "",
       status: "",
     },
   });
@@ -180,6 +192,7 @@ export default function UsersPage() {
   const [activeRole, setActiveRole] = useState<UserRole | "">("");
   const [searchValues, setSearchValues] = useState<UserSearchForm>({
     keyword: "",
+    companyId: "",
     status: "",
   });
 
@@ -201,24 +214,29 @@ export default function UsersPage() {
   const [formLoading, setFormLoading] = useState(false);
 
   const loadCompanyOptions = useCallback(async () => {
+    if (currentRole !== "SUPER_ADMIN") {
+      setCompanyOptions([]);
+      return;
+    }
+
     try {
       const data = await getCompaniesApi({
         page: 1,
         limit: 100,
-        status: 'ACTIVE',
-        sortBy: 'name',
-        sortOrder: 'asc',
+        status: "ACTIVE",
+        sortBy: "name",
+        sortOrder: "asc",
       });
-  
+
       setCompanyOptions(
         data.items.map((company) => ({
           label: `${company.name} (${company.code})`,
           value: company.id,
-        })),
+        }))
       );
     } catch (error) {
       await dialog.error({
-        title: 'Lỗi tải nhà xe',
+        title: "Lỗi tải nhà xe",
         message: getApiErrorMessage(error),
       });
     }
@@ -237,6 +255,10 @@ export default function UsersPage() {
         sortOrder: (sort?.sort || "desc") as "asc" | "desc",
         keyword: searchValues.keyword || undefined,
         role: currentRole === "ADMIN" ? "DRIVER" : activeRole || undefined,
+        companyId:
+          currentRole === "SUPER_ADMIN"
+            ? searchValues.companyId || undefined
+            : undefined,
         status: searchValues.status || undefined,
       };
 
@@ -261,6 +283,7 @@ export default function UsersPage() {
     paginationModel.pageSize,
     searchValues.keyword,
     searchValues.status,
+    searchValues.companyId,
     sortModel,
   ]);
 
@@ -332,16 +355,16 @@ export default function UsersPage() {
         ),
       },
       {
-        field: 'company',
-        headerName: 'Nhà xe',
+        field: "company",
+        headerName: "Nhà xe",
         flex: 1,
         minWidth: 200,
         sortable: false,
         renderCell: (params) => {
           const company = params.row.company;
-      
-          if (!company) return '-';
-      
+
+          if (!company) return "-";
+
           return `${company.name} (${company.code})`;
         },
       },
@@ -442,6 +465,7 @@ export default function UsersPage() {
   function handleResetSearch() {
     const emptyValues: UserSearchForm = {
       keyword: "",
+      companyId: "",
       status: "",
     };
 
@@ -622,6 +646,15 @@ export default function UsersPage() {
                 name="keyword"
                 label="Tìm theo tên, SĐT, email"
               />
+
+              {currentRole === "SUPER_ADMIN" && (
+                <HAutocomplete<UserSearchForm>
+                  name="companyId"
+                  label="Nhà xe"
+                  placeholder="Tất cả nhà xe"
+                  options={companyOptions}
+                />
+              )}
 
               <HDropdown<UserSearchForm>
                 name="status"

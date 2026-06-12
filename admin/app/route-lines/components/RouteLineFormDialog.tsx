@@ -6,7 +6,7 @@ import { SubmitHandler, useForm } from 'react-hook-form';
 import type { RouteLineItem, RouteLineStatus } from '@/api/route-lines.api';
 import type { UserRole } from '@/api/users.api';
 import { HFormDialog } from '@/components/dialog';
-import { HDropdown, HInput } from '@/components/form';
+import { HAutocomplete, HDropdown, HInput } from '@/components/form';
 
 export type CompanyOption = {
   label: string;
@@ -111,7 +111,7 @@ export function RouteLineFormDialog({
       maxWidth="md"
     >
       {isSystemAdmin && (
-        <HDropdown<RouteLineFormValues>
+        <HAutocomplete<RouteLineFormValues>
           name="companyId"
           label="Nhà xe"
           placeholder="Chọn nhà xe"

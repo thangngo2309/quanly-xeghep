@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import { DataSource, EntityManager, In, Repository } from 'typeorm';
 import type { CurrentUserData } from '../../common/decorators/current-user.decorator';
 import { Company } from '../companies/entities/company.entity';
 import { Trip } from '../trips/entities/trip.entity';
@@ -36,19 +36,19 @@ export class BookingsService {
   private buildVietnamDateTime(dateString: string, timeString: string) {
     return new Date(`${dateString}T${timeString}:00+07:00`);
   }
-  
+
   private getVietnamDateRange(dateString: string) {
     return {
       start: new Date(`${dateString}T00:00:00+07:00`),
       end: new Date(`${dateString}T23:59:59+07:00`),
     };
   }
-  
+
   private formatTimeInVietnam(value: Date) {
     const vietnamDate = new Date(value.getTime() + 7 * 60 * 60 * 1000);
     return vietnamDate.toISOString().slice(11, 16);
   }
-  
+
   private async resolveTripForBooking(
     dto: CreateBookingDto,
     currentUser: CurrentUserData,
@@ -56,7 +56,7 @@ export class BookingsService {
     manager: EntityManager,
   ) {
     const tripRepository = manager.getRepository(Trip);
-  
+
     if (dto.tripId) {
       const trip = await tripRepository.findOne({
         where: {
@@ -66,17 +66,17 @@ export class BookingsService {
           mode: 'pessimistic_write',
         },
       });
-  
+
       if (!trip) {
         throw new BadRequestException('Chuyến xe không tồn tại');
       }
-  
+
       this.assertCanAccessCompany(currentUser, trip.companyId);
       this.assertTripCanReceiveBooking(trip);
-  
+
       return trip;
     }
-  
+
     if (
       !dto.routeLineId ||
       !dto.direction ||
@@ -87,14 +87,14 @@ export class BookingsService {
         'Vui lòng chọn tuyến khai thác, chiều đi, ngày đi và giờ đi',
       );
     }
-  
+
     const departureTime = this.buildVietnamDateTime(
       dto.travelDate,
       dto.preferredTime,
     );
-  
+
     const nextMinute = new Date(departureTime.getTime() + 60 * 1000);
-  
+
     const qb = tripRepository
       .createQueryBuilder('trip')
       .setLock('pessimistic_write')
@@ -116,38 +116,60 @@ export class BookingsService {
       .andWhere('(trip.total_seats - trip.booked_seats) >= :passengerCount', {
         passengerCount,
       });
-  
+
     if (currentUser.role === UserRole.ADMIN) {
       this.assertAdminHasCompany(currentUser);
-  
+
       qb.andWhere('trip.company_id = :companyId', {
         companyId: currentUser.companyId,
       });
     }
-  
+
     qb.orderBy('trip.booked_seats', 'ASC').addOrderBy('trip.created_at', 'ASC');
-  
-    const trip = await qb.getOne();
-  
-    if (!trip) {
+
+    const candidateTrips = await qb.getMany();
+
+    if (candidateTrips.length === 0) {
       throw new BadRequestException(
         'Không còn chuyến phù hợp với tuyến, ngày, giờ và số khách đã chọn',
       );
     }
-  
+
+    const bookingRepository = manager.getRepository(Booking);
+
+    const existingBookings = await bookingRepository.find({
+      where: {
+        tripId: In(candidateTrips.map((trip) => trip.id)),
+        status: In(this.getSeatCountedStatuses()),
+      },
+    });
+
+    const trip = this.pickBestTripByPickupDistance({
+      trips: candidateTrips,
+      existingBookings,
+      pickupLat: dto.pickupLat,
+      pickupLng: dto.pickupLng,
+    });
+
+    if (!trip) {
+      throw new BadRequestException(
+        'Không tìm được chuyến phù hợp với điểm đón đã chọn',
+      );
+    }
+
     this.assertCanAccessCompany(currentUser, trip.companyId);
     this.assertTripCanReceiveBooking(trip);
-  
+
     return trip;
   }
-  
+
   async findAvailableTimes(
     query: AvailableBookingTimesQueryDto,
     currentUser: CurrentUserData,
   ) {
     const passengerCount = Number(query.passengerCount || 1);
     const { start, end } = this.getVietnamDateRange(query.travelDate);
-  
+
     const qb = this.tripRepository
       .createQueryBuilder('trip')
       .leftJoinAndSelect('trip.route', 'route')
@@ -171,19 +193,19 @@ export class BookingsService {
       .andWhere('(trip.total_seats - trip.booked_seats) >= :passengerCount', {
         passengerCount,
       });
-  
+
     if (currentUser.role === UserRole.ADMIN) {
       this.assertAdminHasCompany(currentUser);
-  
+
       qb.andWhere('trip.company_id = :companyId', {
         companyId: currentUser.companyId,
       });
     }
-  
+
     qb.orderBy('trip.departure_time', 'ASC');
-  
+
     const trips = await qb.getMany();
-  
+
     const grouped = new Map<
       string,
       {
@@ -194,14 +216,14 @@ export class BookingsService {
         drivers: string[];
       }
     >();
-  
+
     for (const trip of trips) {
       const time = this.formatTimeInVietnam(trip.departureTime);
       const availableSeats = Math.max(
         0,
         Number(trip.totalSeats || 0) - Number(trip.bookedSeats || 0),
       );
-  
+
       const current = grouped.get(time) || {
         time,
         tripCount: 0,
@@ -209,21 +231,21 @@ export class BookingsService {
         vehicles: [],
         drivers: [],
       };
-  
+
       current.tripCount += 1;
       current.availableSeats += availableSeats;
-  
+
       if (trip.vehicle?.licensePlate) {
         current.vehicles.push(trip.vehicle.licensePlate);
       }
-  
+
       if (trip.driver?.fullName) {
         current.drivers.push(trip.driver.fullName);
       }
-  
+
       grouped.set(time, current);
     }
-  
+
     return {
       items: Array.from(grouped.values()).map((item) => ({
         ...item,
@@ -246,10 +268,7 @@ export class BookingsService {
   }
 
   private isSeatCountedStatus(status: BookingStatus) {
-    return ![
-      BookingStatus.CANCELED,
-      BookingStatus.NO_SHOW,
-    ].includes(status);
+    return ![BookingStatus.CANCELED, BookingStatus.NO_SHOW].includes(status);
   }
 
   private assertAdminHasCompany(currentUser: CurrentUserData) {
@@ -281,9 +300,7 @@ export class BookingsService {
   ) {
     if (currentUser.role === UserRole.DRIVER) {
       if (booking.trip?.driverId !== currentUser.userId) {
-        throw new ForbiddenException(
-          'Bạn không có quyền truy cập booking này',
-        );
+        throw new ForbiddenException('Bạn không có quyền truy cập booking này');
       }
 
       return;
@@ -293,12 +310,7 @@ export class BookingsService {
   }
 
   private assertTripCanReceiveBooking(trip: Trip) {
-    if (
-      [
-        TripStatus.COMPLETED,
-        TripStatus.CANCELED,
-      ].includes(trip.status)
-    ) {
+    if ([TripStatus.COMPLETED, TripStatus.CANCELED].includes(trip.status)) {
       throw new BadRequestException(
         'Không thể tạo booking cho chuyến đã hoàn thành hoặc đã hủy',
       );
@@ -316,67 +328,199 @@ export class BookingsService {
     return passengerCount * seatPrice;
   }
 
-  async create(dto: CreateBookingDto, currentUser: CurrentUserData) {
-    const savedBookingId = await this.dataSource.transaction(async (manager) => {
-      const tripRepository = manager.getRepository(Trip);
-      const bookingRepository = manager.getRepository(Booking);
-  
-      const passengerCount = dto.passengerCount || 1;
-      const status = dto.status || BookingStatus.CONFIRMED;
-  
-      const trip = await this.resolveTripForBooking(
-        dto,
-        currentUser,
-        passengerCount,
-        manager,
-      );
-  
-      if (this.isSeatCountedStatus(status)) {
-        const availableSeats = trip.totalSeats - trip.bookedSeats;
-  
-        if (passengerCount > availableSeats) {
-          throw new BadRequestException(
-            `Chuyến xe chỉ còn ${availableSeats} ghế trống`,
-          );
+  private getSeatCountedStatuses() {
+    return [
+      BookingStatus.PENDING,
+      BookingStatus.CONFIRMED,
+      BookingStatus.PICKED_UP,
+    ];
+  }
+
+  private calculateDistanceKm(
+    lat1: number,
+    lng1: number,
+    lat2: number,
+    lng2: number,
+  ) {
+    const earthRadiusKm = 6371;
+
+    const toRad = (value: number) => (value * Math.PI) / 180;
+
+    const dLat = toRad(lat2 - lat1);
+    const dLng = toRad(lng2 - lng1);
+
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(toRad(lat1)) *
+        Math.cos(toRad(lat2)) *
+        Math.sin(dLng / 2) *
+        Math.sin(dLng / 2);
+
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return earthRadiusKm * c;
+  }
+
+  private pickBestTripByPickupDistance(params: {
+    trips: Trip[];
+    existingBookings: Booking[];
+    pickupLat?: number;
+    pickupLng?: number;
+  }) {
+    const { trips, existingBookings, pickupLat, pickupLng } = params;
+
+    /**
+     * Nếu booking mới chưa có tọa độ thì fallback:
+     * ưu tiên chuyến ít khách hơn, rồi chuyến tạo trước.
+     */
+    if (
+      pickupLat === undefined ||
+      pickupLng === undefined ||
+      pickupLat === null ||
+      pickupLng === null
+    ) {
+      return [...trips].sort((a, b) => {
+        const bookedSeatCompare = a.bookedSeats - b.bookedSeats;
+
+        if (bookedSeatCompare !== 0) {
+          return bookedSeatCompare;
         }
-  
-        trip.bookedSeats += passengerCount;
-      }
-  
-      const seatPrice =
-        dto.seatPrice !== undefined && dto.seatPrice !== null
-          ? dto.seatPrice
-          : trip.basePrice !== null
-            ? Number(trip.basePrice)
-            : null;
-  
-      const totalAmount = this.calculateTotalAmount(passengerCount, seatPrice);
-  
-      const booking = bookingRepository.create({
-        bookingCode: this.generateBookingCode(),
-        companyId: trip.companyId,
-        tripId: trip.id,
-        customerName: dto.customerName.trim(),
-        customerPhone: dto.customerPhone.trim(),
-        customerEmail: dto.customerEmail || null,
-        passengerCount,
-        pickupAddress: dto.pickupAddress || null,
-        dropoffAddress: dto.dropoffAddress || null,
-        pickupNote: dto.pickupNote || null,
-        dropoffNote: dto.dropoffNote || null,
-        seatPrice: seatPrice !== null ? String(seatPrice) : null,
-        totalAmount: totalAmount !== null ? String(totalAmount) : null,
-        status,
-        note: dto.note || null,
+
+        return a.createdAt.getTime() - b.createdAt.getTime();
+      })[0];
+    }
+
+    const bookingsByTripId = new Map<string, Booking[]>();
+
+    for (const booking of existingBookings) {
+      const current = bookingsByTripId.get(booking.tripId) || [];
+      current.push(booking);
+      bookingsByTripId.set(booking.tripId, current);
+    }
+
+    const scoredTrips = trips.map((trip) => {
+      const bookings = bookingsByTripId.get(trip.id) || [];
+
+      const bookingsHasPickupLocation = bookings.filter((booking) => {
+        return (
+          booking.pickupLat !== null &&
+          booking.pickupLat !== undefined &&
+          booking.pickupLng !== null &&
+          booking.pickupLng !== undefined
+        );
       });
-  
-      await tripRepository.save(trip);
-  
-      const savedBooking = await bookingRepository.save(booking);
-  
-      return savedBooking.id;
+
+      /**
+       * Nếu chuyến chưa có khách có tọa độ, cho điểm xa lớn.
+       * Như vậy hệ thống sẽ ưu tiên gom khách vào xe đã có cụm đón gần.
+       */
+      const nearestPickupDistanceKm =
+        bookingsHasPickupLocation.length > 0
+          ? Math.min(
+              ...bookingsHasPickupLocation.map((booking) =>
+                this.calculateDistanceKm(
+                  pickupLat,
+                  pickupLng,
+                  Number(booking.pickupLat),
+                  Number(booking.pickupLng),
+                ),
+              ),
+            )
+          : 999999;
+
+      return {
+        trip,
+        nearestPickupDistanceKm,
+        bookedSeats: trip.bookedSeats,
+        createdAt: trip.createdAt,
+      };
     });
-  
+
+    scoredTrips.sort((a, b) => {
+      if (a.nearestPickupDistanceKm !== b.nearestPickupDistanceKm) {
+        return a.nearestPickupDistanceKm - b.nearestPickupDistanceKm;
+      }
+
+      if (a.bookedSeats !== b.bookedSeats) {
+        return a.bookedSeats - b.bookedSeats;
+      }
+
+      return a.createdAt.getTime() - b.createdAt.getTime();
+    });
+
+    return scoredTrips[0]?.trip;
+  }
+
+  async create(dto: CreateBookingDto, currentUser: CurrentUserData) {
+    const savedBookingId = await this.dataSource.transaction(
+      async (manager) => {
+        const tripRepository = manager.getRepository(Trip);
+        const bookingRepository = manager.getRepository(Booking);
+
+        const passengerCount = dto.passengerCount || 1;
+        const status = dto.status || BookingStatus.CONFIRMED;
+
+        const trip = await this.resolveTripForBooking(
+          dto,
+          currentUser,
+          passengerCount,
+          manager,
+        );
+
+        if (this.isSeatCountedStatus(status)) {
+          const availableSeats = trip.totalSeats - trip.bookedSeats;
+
+          if (passengerCount > availableSeats) {
+            throw new BadRequestException(
+              `Chuyến xe chỉ còn ${availableSeats} ghế trống`,
+            );
+          }
+
+          trip.bookedSeats += passengerCount;
+        }
+
+        const seatPrice =
+          dto.seatPrice !== undefined && dto.seatPrice !== null
+            ? dto.seatPrice
+            : trip.basePrice !== null
+              ? Number(trip.basePrice)
+              : null;
+
+        const totalAmount = this.calculateTotalAmount(
+          passengerCount,
+          seatPrice,
+        );
+
+        const booking = bookingRepository.create({
+          bookingCode: this.generateBookingCode(),
+          companyId: trip.companyId,
+          tripId: trip.id,
+          customerName: dto.customerName.trim(),
+          customerPhone: dto.customerPhone.trim(),
+          customerEmail: dto.customerEmail || null,
+          passengerCount,
+          pickupAddress: dto.pickupAddress.trim(),
+          pickupLat: dto.pickupLat ?? null,
+          pickupLng: dto.pickupLng ?? null,
+          dropoffAddress: dto.dropoffAddress?.trim() || null,
+          dropoffLat: dto.dropoffLat ?? null,
+          dropoffLng: dto.dropoffLng ?? null,
+          pickupNote: dto.pickupNote || null,
+          dropoffNote: dto.dropoffNote || null,
+          seatPrice: seatPrice !== null ? String(seatPrice) : null,
+          totalAmount: totalAmount !== null ? String(totalAmount) : null,
+          status,
+          note: dto.note || null,
+        });
+
+        await tripRepository.save(trip);
+
+        const savedBooking = await bookingRepository.save(booking);
+
+        return savedBooking.id;
+      },
+    );
+
     return this.findOne(savedBookingId, currentUser);
   }
 
@@ -657,11 +801,27 @@ export class BookingsService {
       }
 
       if (dto.pickupAddress !== undefined) {
-        booking.pickupAddress = dto.pickupAddress || null;
+        booking.pickupAddress = dto.pickupAddress.trim();
       }
-
+      
+      if (dto.pickupLat !== undefined) {
+        booking.pickupLat = dto.pickupLat;
+      }
+      
+      if (dto.pickupLng !== undefined) {
+        booking.pickupLng = dto.pickupLng;
+      }
+      
       if (dto.dropoffAddress !== undefined) {
-        booking.dropoffAddress = dto.dropoffAddress || null;
+        booking.dropoffAddress = dto.dropoffAddress?.trim() || null;
+      }
+      
+      if (dto.dropoffLat !== undefined) {
+        booking.dropoffLat = dto.dropoffLat;
+      }
+      
+      if (dto.dropoffLng !== undefined) {
+        booking.dropoffLng = dto.dropoffLng;
       }
 
       if (dto.pickupNote !== undefined) {

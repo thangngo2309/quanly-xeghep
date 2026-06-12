@@ -26,7 +26,7 @@ import {
 } from "@/api/vehicles.api";
 import { HDataTable } from "@/components/datatable";
 import { useHDialog } from "@/components/dialog";
-import { HDatePicker, HDropdown, HInput } from "@/components/form";
+import { HAutocomplete, HDatePicker, HDropdown, HInput } from "@/components/form";
 
 import {
   AssignDriverDialog,
@@ -664,7 +664,7 @@ export default function VehiclesPage() {
               />
 
               {currentRole === "SUPER_ADMIN" && (
-                <HDropdown<VehicleSearchForm>
+                <HAutocomplete<VehicleSearchForm>
                   name="companyId"
                   label="Nhà xe"
                   placeholder="Tất cả nhà xe"

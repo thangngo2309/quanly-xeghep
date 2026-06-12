@@ -296,34 +296,85 @@ export function HDataTable<
             sx={{
               py: 1.5,
               px: 2,
+
               "& .MuiFormControl-root": {
                 width: "100%",
               },
+
+              // TextField, Select, Autocomplete dùng chung chiều cao
               "& .MuiInputBase-root": {
                 minHeight: 44,
+                height: 44,
                 borderRadius: 2,
                 fontSize: 15,
+                alignItems: "center",
               },
+
               "& .MuiOutlinedInput-root": {
                 minHeight: 44,
+                height: 44,
               },
+
               "& .MuiOutlinedInput-input": {
-                py: 1.15,
-              },
-              "& .MuiSelect-select": {
-                py: 1.15,
+                py: 0,
+                height: 44,
+                boxSizing: "border-box",
                 display: "flex",
                 alignItems: "center",
               },
+
+              "& .MuiSelect-select": {
+                py: "0 !important",
+                height: 44,
+                minHeight: "44px !important",
+                display: "flex",
+                alignItems: "center",
+              },
+
+              // Autocomplete input
+              "& .MuiAutocomplete-root .MuiOutlinedInput-root": {
+                py: "0 !important",
+                minHeight: 44,
+                height: 44,
+                alignItems: "center",
+              },
+
+              "& .MuiAutocomplete-root .MuiOutlinedInput-input": {
+                py: "0 !important",
+                height: 44,
+                boxSizing: "border-box",
+              },
+
+              "& .MuiAutocomplete-endAdornment": {
+                top: "50%",
+                transform: "translateY(-50%)",
+              },
+
+              // Label nằm giữa khi chưa shrink
               "& .MuiInputLabel-root": {
                 fontSize: 14,
               },
+
+              "& .MuiInputLabel-root:not(.MuiInputLabel-shrink)": {
+                transform: "translate(14px, 12px) scale(1)",
+              },
+
+              "& .MuiInputLabel-shrink": {
+                transform: "translate(14px, -9px) scale(0.75)",
+              },
+
               "& .MuiFormHelperText-root": {
                 mx: 0,
                 mt: 0.5,
                 fontSize: 12,
                 lineHeight: 1.35,
               },
+
+              "& .MuiInputAdornment-root": {
+                height: 44,
+                maxHeight: 44,
+              },
+
               "& .MuiInputAdornment-root .MuiSvgIcon-root": {
                 fontSize: 20,
               },
@@ -364,15 +415,17 @@ export function HDataTable<
                     },
                     minWidth: 0,
                     display: "flex",
-                    alignItems: "flex-start",
+                    alignItems: "center",
+                    minHeight: 44,
                   }}
                 >
                   <Stack
                     direction="row"
                     spacing={1}
                     sx={{
-                      alignItems: "flex-start",
+                      alignItems: "center",
                       width: "100%",
+                      minHeight: 44,
                     }}
                   >
                     {onResetSearch && (
@@ -383,12 +436,10 @@ export function HDataTable<
                         disabled={loading}
                         size="medium"
                         sx={{
-                          minWidth: 96,
                           minHeight: 44,
                           height: 44,
-                          px: 2,
                           borderRadius: 2,
-                          whiteSpace: "nowrap",
+                          whiteSpace: 'nowrap',
                         }}
                       >
                         Xóa lọc
@@ -402,12 +453,10 @@ export function HDataTable<
                       disabled={loading}
                       size="medium"
                       sx={{
-                        minWidth: 120,
                         minHeight: 44,
                         height: 44,
-                        px: 2,
                         borderRadius: 2,
-                        whiteSpace: "nowrap",
+                        whiteSpace: 'nowrap',
                       }}
                     >
                       Tìm kiếm

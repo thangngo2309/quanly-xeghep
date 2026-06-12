@@ -125,10 +125,7 @@ export class RouteSchedulesService {
     return date.getUTCDay();
   }
 
-  private async getScheduleOrFail(
-    id: string,
-    currentUser: CurrentUserData,
-  ) {
+  private async getScheduleOrFail(id: string, currentUser: CurrentUserData) {
     const schedule = await this.scheduleRepository.findOne({
       where: {
         id,
@@ -158,11 +155,11 @@ export class RouteSchedulesService {
         createdAt: 'DESC',
       },
     });
-  
+
     if (exactAssignment?.driverId) {
       return exactAssignment.driverId;
     }
-  
+
     const latestAssignment = await this.vehicleAssignmentRepository
       .createQueryBuilder('assignment')
       .where('assignment.vehicle_id = :vehicleId', { vehicleId })
@@ -170,14 +167,11 @@ export class RouteSchedulesService {
       .orderBy('assignment.date', 'DESC')
       .addOrderBy('assignment.created_at', 'DESC')
       .getOne();
-  
+
     return latestAssignment?.driverId || null;
   }
 
-  private async validateVehicle(
-    vehicleId: string,
-    companyId: string,
-  ) {
+  private async validateVehicle(vehicleId: string, companyId: string) {
     const vehicle = await this.vehicleRepository.findOne({
       where: {
         id: vehicleId,
@@ -199,10 +193,7 @@ export class RouteSchedulesService {
     return vehicle;
   }
 
-  private async validateDriver(
-    driverId: string,
-    companyId: string,
-  ) {
+  private async validateDriver(driverId: string, companyId: string) {
     const driver = await this.userRepository.findOne({
       where: {
         id: driverId,
@@ -233,8 +224,9 @@ export class RouteSchedulesService {
     driverId: string;
     departureTime: Date;
     expectedArrivalTime: Date;
+    excludeTripId?: string;
   }) {
-    const count = await this.tripRepository
+    const qb = this.tripRepository
       .createQueryBuilder('trip')
       .where('(trip.vehicle_id = :vehicleId OR trip.driver_id = :driverId)', {
         vehicleId: params.vehicleId,
@@ -251,8 +243,15 @@ export class RouteSchedulesService {
         {
           departureTime: params.departureTime,
         },
-      )
-      .getCount();
+      );
+
+    if (params.excludeTripId) {
+      qb.andWhere('trip.id != :excludeTripId', {
+        excludeTripId: params.excludeTripId,
+      });
+    }
+
+    const count = await qb.getCount();
 
     return count > 0;
   }
@@ -527,9 +526,7 @@ export class RouteSchedulesService {
     });
 
     if (scheduleVehicles.length === 0) {
-      throw new BadRequestException(
-        'Lịch chạy chưa có xe tham gia vòng quay',
-      );
+      throw new BadRequestException('Lịch chạy chưa có xe tham gia vòng quay');
     }
 
     const dates = this.listDates(fromDate, toDate);
@@ -539,6 +536,7 @@ export class RouteSchedulesService {
 
     let createdCount = 0;
     let skippedCount = 0;
+    let updatedDriverCount = 0;
 
     const skipped: Array<{
       date: string;
@@ -590,10 +588,7 @@ export class RouteSchedulesService {
                 ? schedule.outboundDurationMinutes
                 : schedule.returnDurationMinutes;
 
-            const departureTime = this.dateTimeInVietnam(
-              date,
-              currentMinutes,
-            );
+            const departureTime = this.dateTimeInVietnam(date, currentMinutes);
 
             const expectedArrivalTime = this.dateTimeInVietnam(
               date,
@@ -642,14 +637,48 @@ export class RouteSchedulesService {
                 generationKey,
               },
             });
-
+            
             if (existedTrip) {
-              skippedCount += 1;
-              skipped.push({
-                date,
-                scheduleVehicleId: scheduleVehicle.id,
-                reason: 'Chuyến đã được sinh trước đó',
-              });
+              /**
+               * Chuyến đã sinh rồi nhưng tài xế có thể đã thay đổi sau đó.
+               * Ví dụ: xe 43A-12345 trước dùng test tx, sau đổi sang tx2.
+               * Nếu không sync lại, xe khác dùng test tx sẽ bị conflict và không sinh được chuyến.
+               */
+              if (
+                existedTrip.driverId !== driverId &&
+                ![TripStatus.COMPLETED, TripStatus.CANCELED].includes(existedTrip.status)
+              ) {
+                const hasConflict = await this.hasVehicleOrDriverConflict({
+                  vehicleId: vehicle.id,
+                  driverId,
+                  departureTime,
+                  expectedArrivalTime,
+                  excludeTripId: existedTrip.id,
+                });
+            
+                if (hasConflict) {
+                  skippedCount += 1;
+                  skipped.push({
+                    date,
+                    scheduleVehicleId: scheduleVehicle.id,
+                    reason:
+                      'Chuyến đã tồn tại nhưng không thể cập nhật tài xế vì tài xế mới đang bị trùng lịch',
+                  });
+                } else {
+                  existedTrip.driverId = driverId;
+            
+                  await this.tripRepository.save(existedTrip);
+            
+                  updatedDriverCount += 1;
+                }
+              } else {
+                skippedCount += 1;
+                skipped.push({
+                  date,
+                  scheduleVehicleId: scheduleVehicle.id,
+                  reason: 'Chuyến đã được sinh trước đó',
+                });
+              }
             } else {
               const hasConflict = await this.hasVehicleOrDriverConflict({
                 vehicleId: vehicle.id,
@@ -657,7 +686,7 @@ export class RouteSchedulesService {
                 departureTime,
                 expectedArrivalTime,
               });
-
+            
               if (hasConflict) {
                 skippedCount += 1;
                 skipped.push({
@@ -690,7 +719,7 @@ export class RouteSchedulesService {
                   autoGenerated: true,
                   generationKey,
                 });
-
+            
                 await this.tripRepository.save(trip);
                 createdCount += 1;
               }
@@ -720,6 +749,7 @@ export class RouteSchedulesService {
     return {
       message: 'Sinh lịch chuyến hoàn tất',
       createdCount,
+      updatedDriverCount,
       skippedCount,
       skipped,
     };

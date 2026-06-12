@@ -9,7 +9,7 @@ import type {
 } from '@/api/route-schedules.api';
 import type { RouteDirection } from '@/api/route-lines.api';
 import { HFormDialog } from '@/components/dialog';
-import { HDatePicker, HDropdown, HInput } from '@/components/form';
+import { HAutocomplete, HDatePicker, HDropdown, HInput } from '@/components/form';
 import type { SelectOption } from './RouteScheduleFormDialog';
 
 export type ScheduleVehicleFormValues = {
@@ -105,7 +105,7 @@ export function ScheduleVehicleDialog({
       submitText="Thêm xe"
       maxWidth="sm"
     >
-      <HDropdown<ScheduleVehicleFormValues>
+      <HAutocomplete<ScheduleVehicleFormValues>
         name="vehicleId"
         label="Xe"
         placeholder="Chọn xe"
@@ -121,7 +121,7 @@ export function ScheduleVehicleDialog({
         }}
       />
 
-      <HDropdown<ScheduleVehicleFormValues>
+      <HAutocomplete<ScheduleVehicleFormValues>
         name="driverId"
         label="Tài xế"
         placeholder="Chọn tài xế hoặc để trống"

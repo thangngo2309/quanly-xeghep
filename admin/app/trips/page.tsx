@@ -26,7 +26,7 @@ import { getUsersApi, type UserRole } from '@/api/users.api';
 import { getVehiclesApi } from '@/api/vehicles.api';
 import { HDataTable } from '@/components/datatable';
 import { useHDialog } from '@/components/dialog';
-import { HDatePicker, HDropdown, HInput } from '@/components/form';
+import { HAutocomplete, HDatePicker, HDropdown, HInput } from '@/components/form';
 import { getAuthUser } from '@/helper/auth-storage';
 import { AdminLayout } from '../layouts/admin';
 
@@ -720,7 +720,7 @@ export default function TripsPage() {
               />
 
               {currentRole === 'SUPER_ADMIN' && (
-                <HDropdown<TripSearchForm>
+                <HAutocomplete<TripSearchForm>
                   name="companyId"
                   label="Nhà xe"
                   placeholder="Tất cả nhà xe"
@@ -730,21 +730,21 @@ export default function TripsPage() {
 
               {currentRole !== 'DRIVER' && (
                 <>
-                  <HDropdown<TripSearchForm>
+                  <HAutocomplete<TripSearchForm>
                     name="routeId"
                     label="Tuyến đường"
                     placeholder="Tất cả tuyến"
                     options={routeOptions}
                   />
 
-                  <HDropdown<TripSearchForm>
+                  <HAutocomplete<TripSearchForm>
                     name="vehicleId"
                     label="Xe"
                     placeholder="Tất cả xe"
                     options={vehicleOptions}
                   />
 
-                  <HDropdown<TripSearchForm>
+                  <HAutocomplete<TripSearchForm>
                     name="driverId"
                     label="Tài xế"
                     placeholder="Tất cả tài xế"

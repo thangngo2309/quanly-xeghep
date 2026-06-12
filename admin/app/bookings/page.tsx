@@ -26,7 +26,12 @@ import { getTripsApi, type TripStatus } from "@/api/trips.api";
 import { getUsersApi, type UserRole } from "@/api/users.api";
 import { HDataTable } from "@/components/datatable";
 import { useHDialog } from "@/components/dialog";
-import { HDatePicker, HDropdown, HInput } from "@/components/form";
+import {
+  HAutocomplete,
+  HDatePicker,
+  HDropdown,
+  HInput,
+} from "@/components/form";
 import { getAuthUser } from "@/helper/auth-storage";
 import { AdminLayout } from "../layouts/admin";
 
@@ -500,8 +505,14 @@ export default function BookingsPage() {
         passengerCount: values.passengerCount
           ? Number(values.passengerCount)
           : undefined,
-        pickupAddress: values.pickupAddress || undefined,
-        dropoffAddress: values.dropoffAddress || undefined,
+        pickupAddress: values.pickupAddress.trim(),
+        pickupLat: values.pickupLat ? Number(values.pickupLat) : undefined,
+        pickupLng: values.pickupLng ? Number(values.pickupLng) : undefined,
+
+        dropoffAddress: values.dropoffAddress?.trim() || undefined,
+        dropoffLat: values.dropoffLat ? Number(values.dropoffLat) : undefined,
+        dropoffLng: values.dropoffLng ? Number(values.dropoffLng) : undefined,
+
         pickupNote: values.pickupNote || undefined,
         dropoffNote: values.dropoffNote || undefined,
         seatPrice: values.seatPrice ? Number(values.seatPrice) : undefined,
@@ -732,7 +743,7 @@ export default function BookingsPage() {
               />
 
               {currentRole === "SUPER_ADMIN" && (
-                <HDropdown<BookingSearchForm>
+                <HAutocomplete<BookingFormValues>
                   name="companyId"
                   label="Nhà xe"
                   placeholder="Tất cả nhà xe"
@@ -742,21 +753,21 @@ export default function BookingsPage() {
 
               {currentRole !== "DRIVER" && (
                 <>
-                  <HDropdown<BookingSearchForm>
+                  <HAutocomplete<BookingFormValues>
                     name="routeLineId"
                     label="Tuyến khai thác"
                     placeholder="Tất cả tuyến"
                     options={routeLineOptions}
                   />
 
-                  <HDropdown<BookingSearchForm>
+                  <HAutocomplete<BookingSearchForm>
                     name="routeId"
                     label="Tuyến đường"
                     placeholder="Tất cả tuyến"
                     options={routeOptions}
                   />
 
-                  <HDropdown<BookingSearchForm>
+                  <HAutocomplete<BookingSearchForm>
                     name="driverId"
                     label="Tài xế"
                     placeholder="Tất cả tài xế"

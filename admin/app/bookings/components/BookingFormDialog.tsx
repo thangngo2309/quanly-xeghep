@@ -1,17 +1,23 @@
-'use client';
+"use client";
 
-import { useEffect, useMemo, useState } from 'react';
-import { SubmitHandler, useForm } from 'react-hook-form';
+import { useEffect, useMemo, useState } from "react";
+import { SubmitHandler, useForm } from "react-hook-form";
 
 import {
   getAvailableBookingTimesApi,
   type BookingItem,
   type BookingStatus,
-} from '@/api/bookings.api';
-import type { RouteDirection } from '@/api/route-lines.api';
-import type { UserRole } from '@/api/users.api';
-import { HFormDialog } from '@/components/dialog';
-import { HDatePicker, HDropdown, HInput } from '@/components/form';
+} from "@/api/bookings.api";
+import type { RouteDirection } from "@/api/route-lines.api";
+import type { UserRole } from "@/api/users.api";
+import { HFormDialog } from "@/components/dialog";
+import {
+  HAutocomplete,
+  HDatePicker,
+  HDropdown,
+  HGooglePlaceAutocomplete,
+  HInput,
+} from "@/components/form";
 
 export type SelectOption = {
   label: string;
@@ -31,8 +37,15 @@ export type BookingFormValues = {
   customerPhone: string;
   customerEmail: string;
   passengerCount: string;
+
   pickupAddress: string;
+  pickupLat: string;
+  pickupLng: string;
+
   dropoffAddress: string;
+  dropoffLat: string;
+  dropoffLng: string;
+
   pickupNote: string;
   dropoffNote: string;
   seatPrice: string;
@@ -42,7 +55,7 @@ export type BookingFormValues = {
 
 type BookingFormDialogProps = {
   open: boolean;
-  mode: 'add' | 'edit';
+  mode: "add" | "edit";
   initialValues?: BookingItem | null;
   loading?: boolean;
   currentRole?: UserRole | null;
@@ -56,8 +69,8 @@ function getTodayDateString() {
   const date = new Date();
 
   const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
 }
@@ -75,11 +88,11 @@ function toVietnamDate(value?: string | null) {
 }
 
 function toVietnamTime(value?: string | null) {
-  if (!value) return '';
+  if (!value) return "";
 
   const date = new Date(value);
 
-  if (Number.isNaN(date.getTime())) return '';
+  if (Number.isNaN(date.getTime())) return "";
 
   const vietnamDate = new Date(date.getTime() + 7 * 60 * 60 * 1000);
 
@@ -87,23 +100,30 @@ function toVietnamTime(value?: string | null) {
 }
 
 const defaultValues: BookingFormValues = {
-  companyId: '',
-  routeLineId: '',
-  direction: 'OUTBOUND',
+  companyId: "",
+  routeLineId: "",
+  direction: "OUTBOUND",
   travelDate: getTodayDateString(),
-  preferredTime: '',
+  preferredTime: "",
 
-  customerName: '',
-  customerPhone: '',
-  customerEmail: '',
-  passengerCount: '1',
-  pickupAddress: '',
-  dropoffAddress: '',
-  pickupNote: '',
-  dropoffNote: '',
-  seatPrice: '',
-  status: 'CONFIRMED',
-  note: '',
+  customerName: "",
+  customerPhone: "",
+  customerEmail: "",
+  passengerCount: "1",
+
+  pickupAddress: "",
+  pickupLat: "",
+  pickupLng: "",
+
+  dropoffAddress: "",
+  dropoffLat: "",
+  dropoffLng: "",
+
+  pickupNote: "",
+  dropoffNote: "",
+  seatPrice: "",
+  status: "CONFIRMED",
+  note: "",
 };
 
 export function BookingFormDialog({
@@ -125,57 +145,82 @@ export function BookingFormDialog({
   const [timeLoading, setTimeLoading] = useState(false);
   const [timeHelperText, setTimeHelperText] = useState<string | undefined>();
 
-  const isSystemAdmin = currentRole === 'SUPER_ADMIN';
-  const isEditMode = mode === 'edit';
+  const isSystemAdmin = currentRole === "SUPER_ADMIN";
+  const isEditMode = mode === "edit";
 
-  const watchedCompanyId = methods.watch('companyId');
-  const watchedRouteLineId = methods.watch('routeLineId');
-  const watchedDirection = methods.watch('direction');
-  const watchedTravelDate = methods.watch('travelDate');
-  const watchedPassengerCount = methods.watch('passengerCount');
+  const watchedCompanyId = methods.watch("companyId");
+  const watchedRouteLineId = methods.watch("routeLineId");
+  const watchedDirection = methods.watch("direction");
+  const watchedTravelDate = methods.watch("travelDate");
+  const watchedPassengerCount = methods.watch("passengerCount");
 
   const filteredRouteLineOptions = useMemo(() => {
     if (!isSystemAdmin) return routeLineOptions;
     if (!watchedCompanyId) return [];
 
     return routeLineOptions.filter(
-      (option) => option.companyId === watchedCompanyId,
+      (option) => option.companyId === watchedCompanyId
     );
   }, [isSystemAdmin, routeLineOptions, watchedCompanyId]);
 
   useEffect(() => {
     if (!open) return;
 
-    if (mode === 'edit' && initialValues) {
+    if (mode === "edit" && initialValues) {
       methods.reset({
-        companyId: initialValues.companyId || '',
-        routeLineId: initialValues.trip?.routeLineId || '',
-        direction: (initialValues.trip?.direction || 'OUTBOUND') as RouteDirection,
+        companyId: initialValues.companyId || "",
+        routeLineId: initialValues.trip?.routeLineId || "",
+        direction: (initialValues.trip?.direction ||
+          "OUTBOUND") as RouteDirection,
         travelDate: toVietnamDate(initialValues.trip?.departureTime),
         preferredTime: toVietnamTime(initialValues.trip?.departureTime),
 
-        customerName: initialValues.customerName || '',
-        customerPhone: initialValues.customerPhone || '',
-        customerEmail: initialValues.customerEmail || '',
+        customerName: initialValues.customerName || "",
+        customerPhone: initialValues.customerPhone || "",
+        customerEmail: initialValues.customerEmail || "",
         passengerCount: initialValues.passengerCount
           ? String(initialValues.passengerCount)
-          : '1',
-        pickupAddress: initialValues.pickupAddress || '',
-        dropoffAddress: initialValues.dropoffAddress || '',
-        pickupNote: initialValues.pickupNote || '',
-        dropoffNote: initialValues.dropoffNote || '',
+          : "1",
+        pickupAddress: initialValues.pickupAddress || "",
+        pickupLat:
+          initialValues.pickupLat !== null &&
+          initialValues.pickupLat !== undefined
+            ? String(initialValues.pickupLat)
+            : "",
+        pickupLng:
+          initialValues.pickupLng !== null &&
+          initialValues.pickupLng !== undefined
+            ? String(initialValues.pickupLng)
+            : "",
+
+        dropoffAddress: initialValues.dropoffAddress || "",
+        dropoffLat:
+          initialValues.dropoffLat !== null &&
+          initialValues.dropoffLat !== undefined
+            ? String(initialValues.dropoffLat)
+            : "",
+        dropoffLng:
+          initialValues.dropoffLng !== null &&
+          initialValues.dropoffLng !== undefined
+            ? String(initialValues.dropoffLng)
+            : "",
+        pickupNote: initialValues.pickupNote || "",
+        dropoffNote: initialValues.dropoffNote || "",
         seatPrice:
           initialValues.seatPrice !== null &&
           initialValues.seatPrice !== undefined
             ? String(initialValues.seatPrice)
-            : '',
-        status: initialValues.status || 'CONFIRMED',
-        note: initialValues.note || '',
+            : "",
+        status: initialValues.status || "CONFIRMED",
+        note: initialValues.note || "",
       });
+
+      console.log(111, initialValues.trip?.departureTime)
 
       setTimeOptions([
         {
-          label: toVietnamTime(initialValues.trip?.departureTime) || 'Giờ hiện tại',
+          label:
+            toVietnamTime(initialValues.trip?.departureTime) || "Giờ hiện tại",
           value: toVietnamTime(initialValues.trip?.departureTime),
         },
       ]);
@@ -191,23 +236,17 @@ export function BookingFormDialog({
   useEffect(() => {
     if (!open || isEditMode) return;
 
-    const routeLineId = methods.getValues('routeLineId');
+    const routeLineId = methods.getValues("routeLineId");
 
     if (
       routeLineId &&
       !filteredRouteLineOptions.some((option) => option.value === routeLineId)
     ) {
-      methods.setValue('routeLineId', '');
-      methods.setValue('preferredTime', '');
+      methods.setValue("routeLineId", "");
+      methods.setValue("preferredTime", "");
       setTimeOptions([]);
     }
-  }, [
-    open,
-    isEditMode,
-    watchedCompanyId,
-    filteredRouteLineOptions,
-    methods,
-  ]);
+  }, [open, isEditMode, watchedCompanyId, filteredRouteLineOptions, methods]);
 
   useEffect(() => {
     if (!open || isEditMode) return;
@@ -217,11 +256,11 @@ export function BookingFormDialog({
     const travelDate = watchedTravelDate;
     const passengerCount = Number(watchedPassengerCount || 1);
 
-    methods.setValue('preferredTime', '');
+    methods.setValue("preferredTime", "");
     setTimeOptions([]);
 
     if (!routeLineId || !direction || !travelDate) {
-      setTimeHelperText('Chọn tuyến, chiều và ngày đi để tải giờ còn chỗ.');
+      setTimeHelperText("Chọn tuyến, chiều và ngày đi để tải giờ còn chỗ.");
       return;
     }
 
@@ -246,16 +285,18 @@ export function BookingFormDialog({
           value: item.time,
         }));
 
+        console.log(222,options)
+
         setTimeOptions(options);
 
         if (options.length === 0) {
-          setTimeHelperText('Không có chuyến còn ghế trong ngày đã chọn.');
+          setTimeHelperText("Không có chuyến còn ghế trong ngày đã chọn.");
         }
       } catch {
         if (cancelled) return;
 
         setTimeOptions([]);
-        setTimeHelperText('Không tải được giờ còn chỗ.');
+        setTimeHelperText("Không tải được giờ còn chỗ.");
       } finally {
         if (!cancelled) {
           setTimeLoading(false);
@@ -282,51 +323,51 @@ export function BookingFormDialog({
     <HFormDialog<BookingFormValues>
       open={open}
       mode={mode}
-      title={mode === 'add' ? 'Thêm booking' : 'Cập nhật booking'}
+      title={mode === "add" ? "Thêm booking" : "Cập nhật booking"}
       description={
-        mode === 'add'
-          ? 'Chọn tuyến, ngày và giờ đi. Hệ thống tự tìm chuyến phù hợp còn ghế.'
-          : 'Cập nhật thông tin khách và trạng thái booking.'
+        mode === "add"
+          ? "Chọn tuyến, ngày và giờ đi. Hệ thống tự tìm chuyến phù hợp còn ghế."
+          : "Cập nhật thông tin khách và trạng thái booking."
       }
       methods={methods}
       onSubmit={onSubmit}
       onClose={onClose}
       loading={loading}
-      submitText={mode === 'add' ? 'Tạo booking' : 'Lưu thay đổi'}
+      submitText={mode === "add" ? "Tạo booking" : "Lưu thay đổi"}
       maxWidth="md"
     >
       {isSystemAdmin && (
-        <HDropdown<BookingFormValues>
+        <HAutocomplete<BookingFormValues>
           name="companyId"
           label="Nhà xe"
           placeholder="Chọn nhà xe"
           options={companyOptions}
           disabled={isEditMode || companyOptions.length === 0}
           rules={{
-            required: mode === 'add' ? 'Vui lòng chọn nhà xe' : false,
+            required: mode === "add" ? "Vui lòng chọn nhà xe" : false,
           }}
           sx={{
             gridColumn: {
-              xs: 'auto',
-              md: '1 / -1',
+              xs: "auto",
+              md: "1 / -1",
             },
           }}
         />
       )}
 
-      <HDropdown<BookingFormValues>
+      <HAutocomplete<BookingFormValues>
         name="routeLineId"
         label="Tuyến khai thác"
-        placeholder="Chọn tuyến khai thác"
+        placeholder="Tìm tuyến khai thác"
         options={filteredRouteLineOptions}
         disabled={isEditMode || filteredRouteLineOptions.length === 0}
         helperText={
           isSystemAdmin && !watchedCompanyId
-            ? 'Vui lòng chọn nhà xe trước'
+            ? "Vui lòng chọn nhà xe trước"
             : undefined
         }
         rules={{
-          required: mode === 'add' ? 'Vui lòng chọn tuyến khai thác' : false,
+          required: mode === "add" ? "Vui lòng chọn tuyến khai thác" : false,
         }}
       />
 
@@ -336,16 +377,16 @@ export function BookingFormDialog({
         disabled={isEditMode}
         options={[
           {
-            label: 'Chiều đi',
-            value: 'OUTBOUND',
+            label: "Chiều đi",
+            value: "OUTBOUND",
           },
           {
-            label: 'Chiều về',
-            value: 'RETURN',
+            label: "Chiều về",
+            value: "RETURN",
           },
         ]}
         rules={{
-          required: mode === 'add' ? 'Vui lòng chọn chiều đi' : false,
+          required: mode === "add" ? "Vui lòng chọn chiều đi" : false,
         }}
       />
 
@@ -354,19 +395,19 @@ export function BookingFormDialog({
         label="Ngày đi"
         disabled={isEditMode}
         rules={{
-          required: mode === 'add' ? 'Vui lòng chọn ngày đi' : false,
+          required: mode === "add" ? "Vui lòng chọn ngày đi" : false,
         }}
       />
 
       <HDropdown<BookingFormValues>
         name="preferredTime"
         label="Giờ đi"
-        placeholder={timeLoading ? 'Đang tải giờ...' : 'Chọn giờ đi'}
+        placeholder={timeLoading ? "Đang tải giờ..." : "Chọn giờ đi"}
         options={timeOptions}
         disabled={isEditMode || timeLoading || timeOptions.length === 0}
         helperText={timeHelperText}
         rules={{
-          required: mode === 'add' ? 'Vui lòng chọn giờ đi' : false,
+          required: mode === "add" ? "Vui lòng chọn giờ đi" : false,
         }}
       />
 
@@ -374,7 +415,7 @@ export function BookingFormDialog({
         name="customerName"
         label="Tên khách hàng"
         rules={{
-          required: 'Vui lòng nhập tên khách hàng',
+          required: "Vui lòng nhập tên khách hàng",
         }}
       />
 
@@ -382,14 +423,8 @@ export function BookingFormDialog({
         name="customerPhone"
         label="Số điện thoại"
         rules={{
-          required: 'Vui lòng nhập số điện thoại',
+          required: "Vui lòng nhập số điện thoại",
         }}
-      />
-
-      <HInput<BookingFormValues>
-        name="customerEmail"
-        label="Email"
-        type="email"
       />
 
       <HInput<BookingFormValues>
@@ -397,10 +432,10 @@ export function BookingFormDialog({
         label="Số khách"
         type="number"
         rules={{
-          required: 'Vui lòng nhập số khách',
+          required: "Vui lòng nhập số khách",
           min: {
             value: 1,
-            message: 'Số khách tối thiểu là 1',
+            message: "Số khách tối thiểu là 1",
           },
         }}
       />
@@ -416,30 +451,85 @@ export function BookingFormDialog({
         name="status"
         label="Trạng thái"
         options={[
-          { label: 'Chờ xác nhận', value: 'PENDING' },
-          { label: 'Đã xác nhận', value: 'CONFIRMED' },
-          { label: 'Đã đón khách', value: 'PICKED_UP' },
-          { label: 'Hoàn thành', value: 'COMPLETED' },
-          { label: 'Đã hủy', value: 'CANCELED' },
-          { label: 'Khách không đi', value: 'NO_SHOW' },
+          { label: "Chờ xác nhận", value: "PENDING" },
+          { label: "Đã xác nhận", value: "CONFIRMED" },
+          { label: "Đã đón khách", value: "PICKED_UP" },
+          { label: "Hoàn thành", value: "COMPLETED" },
+          { label: "Đã hủy", value: "CANCELED" },
+          { label: "Khách không đi", value: "NO_SHOW" },
         ]}
         rules={{
-          required: 'Vui lòng chọn trạng thái',
+          required: "Vui lòng chọn trạng thái",
         }}
       />
 
-      <HInput<BookingFormValues>
+      <HGooglePlaceAutocomplete<BookingFormValues>
         name="pickupAddress"
-        label="Địa chỉ đón"
-        multiline
-        rows={2}
+        label="Địa điểm đón"
+        placeholder="Nhập địa điểm đón khách"
+        rules={{
+          required: "Vui lòng nhập địa điểm đón khách",
+        }}
+        helperText="Bắt buộc. Có thể chọn gợi ý từ Google Maps."
+        onPlaceSelected={(place) => {
+          methods.setValue(
+            "pickupAddress",
+            place.formattedAddress || place.description,
+            {
+              shouldDirty: true,
+              shouldValidate: true,
+            }
+          );
+
+          methods.setValue(
+            "pickupLat",
+            place.lat !== undefined ? String(place.lat) : "",
+            {
+              shouldDirty: true,
+            }
+          );
+
+          methods.setValue(
+            "pickupLng",
+            place.lng !== undefined ? String(place.lng) : "",
+            {
+              shouldDirty: true,
+            }
+          );
+        }}
       />
 
-      <HInput<BookingFormValues>
+      <HGooglePlaceAutocomplete<BookingFormValues>
         name="dropoffAddress"
-        label="Địa chỉ trả"
-        multiline
-        rows={2}
+        label="Địa điểm trả"
+        placeholder="Nhập địa điểm trả khách nếu có"
+        helperText="Không bắt buộc. Có thể chọn gợi ý từ Google Maps."
+        onPlaceSelected={(place) => {
+          methods.setValue(
+            "dropoffAddress",
+            place.formattedAddress || place.description,
+            {
+              shouldDirty: true,
+              shouldValidate: true,
+            }
+          );
+
+          methods.setValue(
+            "dropoffLat",
+            place.lat !== undefined ? String(place.lat) : "",
+            {
+              shouldDirty: true,
+            }
+          );
+
+          methods.setValue(
+            "dropoffLng",
+            place.lng !== undefined ? String(place.lng) : "",
+            {
+              shouldDirty: true,
+            }
+          );
+        }}
       />
 
       <HInput<BookingFormValues>
@@ -463,8 +553,8 @@ export function BookingFormDialog({
         rows={2}
         sx={{
           gridColumn: {
-            xs: 'auto',
-            md: '1 / -1',
+            xs: "auto",
+            md: "1 / -1",
           },
         }}
       />

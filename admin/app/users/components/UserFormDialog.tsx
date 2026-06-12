@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { SubmitHandler, useForm } from 'react-hook-form';
 import { HFormDialog } from '@/components/dialog';
-import { HDropdown, HInput } from '@/components/form';
+import { HAutocomplete, HDropdown, HInput } from '@/components/form';
 import type { UserItem, UserRole, UserStatus } from '@/api/users.api';
 
 export type UserFormValues = {
@@ -191,7 +191,7 @@ export function UserFormDialog({
       />
 
       {shouldShowCompany && (
-        <HDropdown<UserFormValues>
+        <HAutocomplete<UserFormValues>
           name="companyId"
           label="Nhà xe"
           placeholder="Chọn nhà xe"
