@@ -63,6 +63,43 @@ services:
       - be
     networks:
       - quanly-xegh-network
+  customer-web:
+    container_name: quanly-xegh-customer-web
+    build:
+      context: ./customer-web
+      dockerfile: Dockerfile.dev
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${CUSTOMER_WEB_PORT}:${CUSTOMER_WEB_PORT}"
+    volumes:
+      - ./customer-web:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - be
+    networks:
+      - quanly-xegh-network
+
+  driver-web:
+    container_name: quanly-xegh-driver-web
+    build:
+      context: ./driver-web
+      dockerfile: Dockerfile.dev
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "${DRIVER_WEB_PORT}:${DRIVER_WEB_PORT}"
+    volumes:
+      - ./driver-web:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - be
+    networks:
+      - quanly-xegh-network
 
 volumes:
   quanly_xegh_postgres_data:

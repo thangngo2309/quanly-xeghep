@@ -60,7 +60,52 @@ services:
       - be
     networks:
       - quanly-xegh-network-prod
+  customer-web:
+    container_name: quanly-xegh-customer-web-prod
+    build:
+      context: ./customer-web
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
+        NEXT_PUBLIC_COMPANY_ID: ${NEXT_PUBLIC_COMPANY_ID}
+        NEXT_PUBLIC_COMPANY_NAME: ${NEXT_PUBLIC_COMPANY_NAME}
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+      NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
+      NEXT_PUBLIC_COMPANY_ID: ${NEXT_PUBLIC_COMPANY_ID}
+      NEXT_PUBLIC_COMPANY_NAME: ${NEXT_PUBLIC_COMPANY_NAME}
+    ports:
+      - "${CUSTOMER_WEB_PORT}:${CUSTOMER_WEB_PORT}"
+    depends_on:
+      - be
+    networks:
+      - quanly-xegh-network-prod
 
+  driver-web:
+    container_name: quanly-xegh-driver-web-prod
+    build:
+      context: ./driver-web
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+    ports:
+      - "${DRIVER_WEB_PORT}:${DRIVER_WEB_PORT}"
+    depends_on:
+      - be
+    networks:
+      - quanly-xegh-network-prod
+      
 volumes:
   quanly_xegh_postgres_prod_data:
   quanly_xegh_redis_prod_data:

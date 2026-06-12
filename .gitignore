@@ -2,12 +2,22 @@
 node_modules/
 be/node_modules/
 admin/node_modules/
+customer-web/node_modules/
+driver-web/node_modules/
 
 # Build outputs
 dist/
 be/dist/
+
+.next/
 admin/.next/
+customer-web/.next/
+driver-web/.next/
+
+out/
 admin/out/
+customer-web/out/
+driver-web/out/
 
 # Env files
 .env
@@ -15,6 +25,11 @@ admin/out/
 .env.development.local
 .env.test.local
 .env.production.local
+
+be/.env
+admin/.env
+customer-web/.env
+driver-web/.env
 
 # Logs
 logs/
@@ -43,8 +58,20 @@ be/uploads/
 coverage/
 be/coverage/
 admin/coverage/
+customer-web/coverage/
+driver-web/coverage/
 
 # Cache
 .cache/
-.next/
 turbo/
+be/.cache/
+admin/.cache/
+customer-web/.cache/
+driver-web/.cache/
+
+# TypeScript
+*.tsbuildinfo
+be/*.tsbuildinfo
+admin/*.tsbuildinfo
+customer-web/*.tsbuildinfo
+driver-web/*.tsbuildinfo
