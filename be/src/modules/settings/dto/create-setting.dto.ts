@@ -6,7 +6,7 @@ import {
   IsString,
   MaxLength,
 } from 'class-validator';
-import { SettingGroup, SettingStatus, SettingValueType } from 'src/enums/setting-status.enum';
+import { SettingGroup, SettingStatus, SettingValueType } from 'src/enums/setting.enum';
 
 export class CreateSettingDto {
   @ApiProperty({

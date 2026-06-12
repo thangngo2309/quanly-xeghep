@@ -22,7 +22,6 @@ import {
 import { getCompaniesApi } from "@/api/companies.api";
 import { getApiErrorMessage } from "@/api/http";
 import { getRoutesApi } from "@/api/routes.api";
-import { getTripsApi, type TripStatus } from "@/api/trips.api";
 import { getUsersApi, type UserRole } from "@/api/users.api";
 import { HDataTable } from "@/components/datatable";
 import { useHDialog } from "@/components/dialog";
@@ -52,6 +51,36 @@ type BookingSearchForm = {
   fromDate: string;
   toDate: string;
 };
+
+function getDispatchStatusLabel(status?: string) {
+  switch (status) {
+    case 'AUTO_ASSIGNED':
+      return 'Tự ghép';
+    case 'WARNING':
+      return 'Cần xem lại';
+    case 'MANUAL_REQUIRED':
+      return 'Cần điều phối';
+    case 'MANUALLY_ASSIGNED':
+      return 'Admin đã ghép';
+    default:
+      return '-';
+  }
+}
+
+function getDispatchStatusColor(status?: string) {
+  switch (status) {
+    case 'AUTO_ASSIGNED':
+      return 'success';
+    case 'WARNING':
+      return 'warning';
+    case 'MANUAL_REQUIRED':
+      return 'error';
+    case 'MANUALLY_ASSIGNED':
+      return 'info';
+    default:
+      return 'default';
+  }
+}
 
 function getTodayDateString() {
   const date = new Date();
@@ -626,6 +655,40 @@ export default function BookingsPage() {
         headerName: "Tổng tiền",
         width: 140,
         renderCell: (params) => formatCurrency(params.value as any),
+      },
+      {
+        field: 'dispatchStatus',
+        headerName: 'Điều phối',
+        minWidth: 150,
+        renderCell: (params) => (
+          <Chip
+            size="small"
+            label={getDispatchStatusLabel(params.row.dispatchStatus)}
+            color={getDispatchStatusColor(params.row.dispatchStatus) as any}
+            variant="outlined"
+          />
+        ),
+      },
+      {
+        field: 'dispatchNote',
+        headerName: 'Ghi chú ghép xe',
+        minWidth: 260,
+        flex: 1,
+        renderCell: (params) => (
+          <Typography
+            variant="body2"
+            sx={{
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              whiteSpace: 'normal',
+              lineHeight: 1.4,
+            }}
+          >
+            {params.row.dispatchNote || '-'}
+          </Typography>
+        ),
       },
       {
         field: "status",

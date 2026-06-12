@@ -1,4 +1,4 @@
-import { SettingGroup, SettingStatus, SettingValueType } from 'src/enums/setting-status.enum';
+import { SettingGroup, SettingStatus, SettingValueType } from 'src/enums/setting.enum';
 import {
     Column,
     CreateDateColumn,

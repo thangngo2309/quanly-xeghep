@@ -11,7 +11,7 @@ import {
   Max,
   Min,
 } from 'class-validator';
-import { BookingStatus } from 'src/enums/booking-status.enum';
+import { BookingStatus } from 'src/enums/booking.enum';
 
 function emptyToUndefined(value: unknown) {
   if (value === '' || value === null || value === undefined) {

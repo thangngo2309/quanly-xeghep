@@ -12,11 +12,11 @@ import { Company } from '../../companies/entities/company.entity';
 import { TransportRoute } from '../../routes/entities/route.entity';
 import { User } from '../../users/entities/user.entity';
 import { Vehicle } from '../../vehicles/entities/vehicle.entity';
-import { TripStatus } from 'src/enums/trip-status.enum';
+import { TripStatus } from 'src/enums/trip.enum';
 import { RouteScheduleVehicle } from 'src/modules/route-schedules/entities/route-schedule-vehicle.entity';
 import { RouteScheduleTemplate } from 'src/modules/route-schedules/entities/route-schedule.entity';
-import { RouteDirection } from 'src/enums/route-direction.enum';
 import { RouteLine } from 'src/modules/route-lines/entities/route-line.entity';
+import { RouteDirection } from 'src/enums/route-line.enum';
 
 @Entity('trips')
 export class Trip {

@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import type { CurrentUserData } from '../../common/decorators/current-user.decorator';
 import { Company } from '../companies/entities/company.entity';
 import { RouteLine } from '../route-lines/entities/route-line.entity';
@@ -22,10 +22,9 @@ import { RouteScheduleVehicle } from './entities/route-schedule-vehicle.entity';
 import { RouteScheduleTemplate } from './entities/route-schedule.entity';
 import { UserRole, UserStatus } from 'src/enums/user.enums';
 import { VehicleStatus } from 'src/enums/vehicle-type.enum';
-import { TripStatus } from 'src/enums/trip-status.enum';
-import { RouteLineStatus } from 'src/enums/route-line-status.enum';
-import { RouteScheduleStatus } from 'src/enums/route-schedule-status.enum';
-import { RouteDirection } from 'src/enums/route-direction.enum';
+import { TripStatus } from 'src/enums/trip.enum';
+import { RouteDirection, RouteLineStatus } from 'src/enums/route-line.enum';
+import { RouteScheduleStatus } from 'src/enums/route-schedule.enum';
 
 @Injectable()
 export class RouteSchedulesService {

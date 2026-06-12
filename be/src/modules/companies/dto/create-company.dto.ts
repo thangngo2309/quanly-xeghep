@@ -7,7 +7,7 @@ import {
   IsString,
   MaxLength,
 } from 'class-validator';
-import { CompanyStatus } from 'src/enums/company-status.enum';
+import { CompanyStatus } from 'src/enums/company.enum';
 
 export class CreateCompanyDto {
   @ApiProperty({ example: 'NHAXE001' })

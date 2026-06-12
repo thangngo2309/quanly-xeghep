@@ -10,7 +10,7 @@ import { CreateSettingDto } from './dto/create-setting.dto';
 import { ListSettingsQueryDto } from './dto/list-settings-query.dto';
 import { UpdateSettingDto } from './dto/update-setting.dto';
 import { Setting } from './entities/setting.entity';
-import { SettingGroup, SettingStatus, SettingValueType } from 'src/enums/setting-status.enum';
+import { SettingGroup, SettingStatus, SettingValueType } from 'src/enums/setting.enum';
 
 @Injectable()
 export class SettingsService {

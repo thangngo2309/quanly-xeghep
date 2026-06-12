@@ -9,9 +9,9 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { Company } from '../../companies/entities/company.entity';
-import { TransportRouteStatus } from 'src/enums/transport-route-status.enum';
-import { RouteDirection } from 'src/enums/route-direction.enum';
+import { TransportRouteStatus } from 'src/enums/transport-route.enum';
 import { RouteLine } from 'src/modules/route-lines/entities/route-line.entity';
+import { RouteDirection } from 'src/enums/route-line.enum';
 
 @Entity('transport_routes')
 @Index('IDX_transport_routes_company_name', ['companyId', 'name'])

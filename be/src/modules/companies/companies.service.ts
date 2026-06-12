@@ -9,7 +9,7 @@ import { CreateCompanyDto } from './dto/create-company.dto';
 import { ListCompaniesQueryDto } from './dto/list-companies-query.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { Company } from './entities/company.entity';
-import { CompanyStatus } from 'src/enums/company-status.enum';
+import { CompanyStatus } from 'src/enums/company.enum';
 
 @Injectable()
 export class CompaniesService {

@@ -9,7 +9,7 @@ import {
   Max,
   Min,
 } from 'class-validator';
-import { CompanyStatus } from 'src/enums/company-status.enum';
+import { CompanyStatus } from 'src/enums/company.enum';
 
 function emptyToUndefined(value: unknown) {
   if (value === '' || value === null || value === undefined) {

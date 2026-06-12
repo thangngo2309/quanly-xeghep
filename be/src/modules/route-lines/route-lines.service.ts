@@ -15,9 +15,8 @@ import { ListRouteLinesQueryDto } from './dto/list-route-lines-query.dto';
 import { UpdateRouteLineDto } from './dto/update-route-line.dto';
 import { RouteLine } from './entities/route-line.entity';
 import { UserRole } from 'src/enums/user.enums';
-import { RouteDirection } from 'src/enums/route-direction.enum';
-import { RouteLineStatus } from 'src/enums/route-line-status.enum';
-import { TransportRouteStatus } from 'src/enums/transport-route-status.enum';
+import { RouteDirection, RouteLineStatus } from 'src/enums/route-line.enum';
+import { TransportRouteStatus } from 'src/enums/transport-route.enum';
 
 @Injectable()
 export class RouteLinesService {

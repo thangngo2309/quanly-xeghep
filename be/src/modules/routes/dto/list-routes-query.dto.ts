@@ -10,7 +10,7 @@ import {
   Max,
   Min,
 } from 'class-validator';
-import { TransportRouteStatus } from 'src/enums/transport-route-status.enum';
+import { TransportRouteStatus } from 'src/enums/transport-route.enum';
 
 function emptyToUndefined(value: unknown) {
   if (value === '' || value === null || value === undefined) {

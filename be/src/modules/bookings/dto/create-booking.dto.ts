@@ -17,8 +17,8 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
-import { BookingStatus } from 'src/enums/booking-status.enum';
-import { RouteDirection } from 'src/enums/route-direction.enum';
+import { BookingStatus } from 'src/enums/booking.enum';
+import { RouteDirection } from 'src/enums/route-line.enum';
 
 export class CreateBookingDto {
   /**

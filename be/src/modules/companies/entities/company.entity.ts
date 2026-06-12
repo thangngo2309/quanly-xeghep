@@ -1,4 +1,4 @@
-import { CompanyStatus } from 'src/enums/company-status.enum';
+import { CompanyStatus } from 'src/enums/company.enum';
 import { User } from 'src/modules/users/entities/user.entity';
 import {
     Column,

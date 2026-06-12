@@ -17,7 +17,7 @@ import { UpdateRouteDto } from './dto/update-route.dto';
 import { RouteDriverAssignment } from './entities/route-driver-assignment.entity';
 import { TransportRoute } from './entities/route.entity';
 import { UserRole, UserStatus } from 'src/enums/user.enums';
-import { RouteDriverAssignmentStatus, TransportRouteStatus } from 'src/enums/transport-route-status.enum';
+import { RouteDriverAssignmentStatus, TransportRouteStatus } from 'src/enums/transport-route.enum';
 
 @Injectable()
 export class RoutesService {

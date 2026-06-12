@@ -9,7 +9,7 @@ import {
   Max,
   Min,
 } from 'class-validator';
-import { SettingGroup, SettingStatus, SettingValueType } from 'src/enums/setting-status.enum';
+import { SettingGroup, SettingStatus, SettingValueType } from 'src/enums/setting.enum';
 
 function emptyToUndefined(value: unknown) {
   if (value === '' || value === null || value === undefined) {

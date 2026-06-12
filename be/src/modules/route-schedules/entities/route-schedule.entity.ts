@@ -11,8 +11,8 @@ import {
   } from 'typeorm';
   import { Company } from '../../companies/entities/company.entity';
   import { RouteLine } from '../../route-lines/entities/route-line.entity';
-import { TripStatus } from 'src/enums/trip-status.enum';
-import { RouteScheduleStatus } from 'src/enums/route-schedule-status.enum';
+import { TripStatus } from 'src/enums/trip.enum';
+import { RouteScheduleStatus } from 'src/enums/route-schedule.enum';
 import { RouteScheduleVehicle } from './route-schedule-vehicle.entity';
   
   @Entity('route_schedule_templates')

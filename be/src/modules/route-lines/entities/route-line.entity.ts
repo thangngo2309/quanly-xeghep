@@ -11,7 +11,7 @@ import {
   } from 'typeorm';
   import { Company } from '../../companies/entities/company.entity';
   import { TransportRoute } from '../../routes/entities/route.entity';
-import { RouteLineStatus } from 'src/enums/route-line-status.enum';
+import { RouteLineStatus } from 'src/enums/route-line.enum';
   
   @Entity('route_lines')
   @Index('UQ_route_lines_company_name', ['companyId', 'name'], {

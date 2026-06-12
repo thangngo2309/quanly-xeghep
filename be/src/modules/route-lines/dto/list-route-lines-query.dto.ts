@@ -10,7 +10,7 @@ import {
   Max,
   Min,
 } from 'class-validator';
-import { RouteLineStatus } from 'src/enums/route-line-status.enum';
+import { RouteLineStatus } from 'src/enums/route-line.enum';
 
 function emptyToUndefined(value: unknown) {
   if (value === '' || value === null || value === undefined) {

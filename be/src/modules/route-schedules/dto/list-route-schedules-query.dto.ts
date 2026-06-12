@@ -10,7 +10,7 @@ import {
   Max,
   Min,
 } from 'class-validator';
-import { RouteScheduleStatus } from 'src/enums/route-schedule-status.enum';
+import { RouteScheduleStatus } from 'src/enums/route-schedule.enum';
 
 function emptyToUndefined(value: unknown) {
   if (value === '' || value === null || value === undefined) {

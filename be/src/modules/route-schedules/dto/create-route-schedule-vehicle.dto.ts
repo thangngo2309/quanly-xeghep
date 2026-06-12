@@ -7,8 +7,8 @@ import {
   IsUUID,
   Matches,
 } from 'class-validator';
-import { RouteDirection } from 'src/enums/route-direction.enum';
-import { RouteScheduleStatus } from 'src/enums/route-schedule-status.enum';
+import { RouteDirection } from 'src/enums/route-line.enum';
+import { RouteScheduleStatus } from 'src/enums/route-schedule.enum';
 
 export class CreateRouteScheduleVehicleDto {
   @ApiProperty({

@@ -11,7 +11,7 @@ import {
   Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { TripStatus } from 'src/enums/trip-status.enum';
+import { TripStatus } from 'src/enums/trip.enum';
 
 export class CreateTripDto {
   @ApiProperty({

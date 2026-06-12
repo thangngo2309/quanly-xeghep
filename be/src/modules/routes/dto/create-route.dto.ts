@@ -12,7 +12,7 @@ import {
   Min,
 } from 'class-validator';
 import { Type } from 'class-transformer';
-import { TransportRouteStatus } from 'src/enums/transport-route-status.enum';
+import { TransportRouteStatus } from 'src/enums/transport-route.enum';
 
 export class CreateRouteDto {
   @ApiPropertyOptional({

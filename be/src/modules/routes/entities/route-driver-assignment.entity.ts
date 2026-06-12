@@ -11,7 +11,7 @@ import {
   import { Company } from '../../companies/entities/company.entity';
   import { User } from '../../users/entities/user.entity';
   import { TransportRoute } from './route.entity';
-import { RouteDriverAssignmentStatus } from 'src/enums/transport-route-status.enum';
+import { RouteDriverAssignmentStatus } from 'src/enums/transport-route.enum';
   
   @Entity('route_driver_assignments')
   export class RouteDriverAssignment {

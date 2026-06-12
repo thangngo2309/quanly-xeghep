@@ -9,7 +9,7 @@ import {
   Max,
   Min,
 } from 'class-validator';
-import { RouteDirection } from 'src/enums/route-direction.enum';
+import { RouteDirection } from 'src/enums/route-line.enum';
 
 export class AvailableBookingTimesQueryDto {
   @ApiProperty({

@@ -17,9 +17,9 @@ import { ListTripsQueryDto } from './dto/list-trips-query.dto';
 import { UpdateTripDto } from './dto/update-trip.dto';
 import { Trip } from './entities/trip.entity';
 import { UserRole, UserStatus } from 'src/enums/user.enums';
-import { TransportRouteStatus } from 'src/enums/transport-route-status.enum';
+import { TransportRouteStatus } from 'src/enums/transport-route.enum';
 import { VehicleStatus } from 'src/enums/vehicle-type.enum';
-import { TripStatus } from 'src/enums/trip-status.enum';
+import { TripStatus } from 'src/enums/trip.enum';
 
 @Injectable()
 export class TripsService {

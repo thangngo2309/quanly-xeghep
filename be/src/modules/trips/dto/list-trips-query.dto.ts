@@ -11,7 +11,7 @@ import {
   Max,
   Min,
 } from 'class-validator';
-import { TripStatus } from 'src/enums/trip-status.enum';
+import { TripStatus } from 'src/enums/trip.enum';
 
 function emptyToUndefined(value: unknown) {
   if (value === '' || value === null || value === undefined) {

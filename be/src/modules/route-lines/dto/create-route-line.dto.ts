@@ -13,7 +13,7 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
-import { RouteLineStatus } from 'src/enums/route-line-status.enum';
+import { RouteLineStatus } from 'src/enums/route-line.enum';
 
 export class CreateRouteLineDto {
   @ApiPropertyOptional({

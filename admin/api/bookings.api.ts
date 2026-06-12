@@ -10,6 +10,12 @@ export type BookingStatus =
   | "CANCELED"
   | "NO_SHOW";
 
+  export type BookingDispatchStatus =
+  | 'AUTO_ASSIGNED'
+  | 'WARNING'
+  | 'MANUAL_REQUIRED'
+  | 'MANUALLY_ASSIGNED';
+
 export type BookingItem = {
   id: string;
   bookingCode: string;
@@ -38,6 +44,11 @@ export type BookingItem = {
   dropoffLng?: number | null;
   pickupNote?: string | null;
   dropoffNote?: string | null;
+
+  dispatchStatus?: BookingDispatchStatus;
+  dispatchNote?: string | null;
+  assignedByAdminId?: string | null;
+  assignedAt?: string | null;
 
   seatPrice?: string | number | null;
   totalAmount?: string | number | null;
@@ -105,7 +116,7 @@ export type CreateBookingPayload = {
   customerPhone: string;
   customerEmail?: string;
   passengerCount?: number;
-  
+
   pickupAddress: string;
   pickupLat?: number;
   pickupLng?: number;

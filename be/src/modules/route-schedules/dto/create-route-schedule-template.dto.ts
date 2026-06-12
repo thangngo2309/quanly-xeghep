@@ -15,8 +15,8 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
-import { RouteScheduleStatus } from 'src/enums/route-schedule-status.enum';
-import { TripStatus } from 'src/enums/trip-status.enum';
+import { RouteScheduleStatus } from 'src/enums/route-schedule.enum';
+import { TripStatus } from 'src/enums/trip.enum';
 
 export class CreateRouteScheduleTemplateDto {
   @ApiProperty({

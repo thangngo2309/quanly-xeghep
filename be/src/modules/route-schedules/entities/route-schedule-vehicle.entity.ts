@@ -12,8 +12,8 @@ import {
   import { User } from '../../users/entities/user.entity';
   import { Vehicle } from '../../vehicles/entities/vehicle.entity';
 import { RouteScheduleTemplate } from './route-schedule.entity';
-import { RouteDirection } from 'src/enums/route-direction.enum';
-import { RouteScheduleStatus } from 'src/enums/route-schedule-status.enum';
+import { RouteScheduleStatus } from 'src/enums/route-schedule.enum';
+import { RouteDirection } from 'src/enums/route-line.enum';
   
   @Entity('route_schedule_vehicles')
   export class RouteScheduleVehicle {
