@@ -23,6 +23,8 @@ import { ListBookingsQueryDto } from './dto/list-bookings-query.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
 import { UserRole } from 'src/enums/user.enums';
 import { AvailableBookingTimesQueryDto } from './dto/available-booking-times-query.dto';
+import { DispatchBoardQueryDto } from './dto/dispatch-board-query.dto';
+import { MoveBookingTripDto } from './dto/move-booking-trip.dto';
 
 @ApiTags('Bookings')
 @ApiBearerAuth()
@@ -56,6 +58,25 @@ export class BookingsController {
     @CurrentUser() currentUser: CurrentUserData,
   ) {
     return this.bookingsService.findAvailableTimes(query, currentUser);
+  }
+
+  @Get('dispatch-board')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  getDispatchBoard(
+    @Query() query: DispatchBoardQueryDto,
+    @CurrentUser() currentUser: CurrentUserData,
+  ) {
+    return this.bookingsService.getDispatchBoard(query, currentUser);
+  }
+
+  @Patch(':id/move-trip')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
+  moveBookingTrip(
+    @Param('id') id: string,
+    @Body() dto: MoveBookingTripDto,
+    @CurrentUser() currentUser: CurrentUserData,
+  ) {
+    return this.bookingsService.moveBookingTrip(id, dto, currentUser);
   }
 
   @Get(':id')

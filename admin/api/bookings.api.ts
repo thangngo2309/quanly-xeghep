@@ -131,6 +131,79 @@ export type CreateBookingPayload = {
   note?: string;
 };
 
+export type DispatchBoardQuery = {
+  routeLineId: string;
+  direction: RouteDirection;
+  travelDate: string;
+  preferredTime: string;
+};
+
+export type DispatchBoardBookingItem = {
+  id: string;
+  bookingCode: string;
+  customerName: string;
+  customerPhone: string;
+  passengerCount: number;
+
+  pickupAddress?: string | null;
+  pickupLat?: number | null;
+  pickupLng?: number | null;
+
+  dropoffAddress?: string | null;
+
+  status: BookingStatus;
+  dispatchStatus?: BookingDispatchStatus;
+  dispatchNote?: string | null;
+
+  createdAt: string;
+};
+
+export type DispatchBoardTripItem = {
+  tripId: string;
+  tripCode: string;
+  departureTime: string;
+  expectedArrivalTime?: string | null;
+  direction: RouteDirection;
+  status: string;
+
+  vehicle?: {
+    id: string;
+    licensePlate: string;
+    seatCount: number;
+  } | null;
+
+  driver?: {
+    id: string;
+    fullName: string;
+    phone?: string | null;
+  } | null;
+
+  totalSeats: number;
+  bookedSeats: number;
+  availableSeats: number;
+
+  pickupStats?: {
+    centerLat: number | null;
+    centerLng: number | null;
+    maxDistanceKm: number | null;
+  };
+
+  bookings: DispatchBoardBookingItem[];
+};
+
+export type DispatchBoardResponse = {
+  trips: DispatchBoardTripItem[];
+  totalTrips: number;
+  totalSeats: number;
+  bookedSeats: number;
+  availableSeats: number;
+};
+
+export type MoveBookingTripPayload = {
+  targetTripId: string;
+  note?: string;
+};
+
 export type UpdateBookingPayload = Partial<CreateBookingPayload>;
 
 export async function getBookingsApi(query: BookingListQuery) {
@@ -171,6 +244,29 @@ export async function updateBookingApi(
 
 export async function deleteBookingApi(id: string) {
   const response = await http.delete<{ message: string }>(`/bookings/${id}`);
+
+  return response.data;
+}
+
+export async function getDispatchBoardApi(query: DispatchBoardQuery) {
+  const response = await http.get<DispatchBoardResponse>(
+    '/bookings/dispatch-board',
+    {
+      params: cleanParams(query),
+    },
+  );
+
+  return response.data;
+}
+
+export async function moveBookingTripApi(
+  bookingId: string,
+  payload: MoveBookingTripPayload,
+) {
+  const response = await http.patch<BookingItem>(
+    `/bookings/${bookingId}/move-trip`,
+    payload,
+  );
 
   return response.data;
 }

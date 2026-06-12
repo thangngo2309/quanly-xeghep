@@ -73,6 +73,13 @@ export const adminMenuItems: AdminMenuItem[] = [
     roles: ["SUPER_ADMIN", "ADMIN", "DRIVER"],
   },
   {
+    key: "dispatch",
+    label: 'Điều phối chuyến',
+    href: '/dispatch',
+    icon: '🧩',
+    roles: ['SUPER_ADMIN', 'ADMIN'],
+  },
+  {
     key: "settings",
     label: "Cấu hình",
     href: "/settings",
