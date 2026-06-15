@@ -15,6 +15,7 @@ import { SettingsModule } from './modules/settings/settings.module';
 import { RouteLinesModule } from './modules/route-lines/route-lines.module';
 import { RouteSchedulesModule } from './modules/route-schedules/route-schedules.module';
 import { PublicModule } from './modules/public/public.module';
+import { DriverModule } from './modules/driver/driver.module';
 
 @Module({
   imports: [
@@ -43,7 +44,8 @@ import { PublicModule } from './modules/public/public.module';
     SettingsModule,
     RouteLinesModule,
     RouteSchedulesModule,
-    PublicModule
+    PublicModule,
+    DriverModule
   ],
   controllers: [AppController],
   providers: [AppService],
