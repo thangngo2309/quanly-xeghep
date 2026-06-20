@@ -3,65 +3,146 @@ services:
     image: postgis/postgis:16-3.4-alpine
     container_name: quanly-xegh-postgres-prod
     restart: unless-stopped
+
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
-    ports:
-      - "5432:5432"
+
     volumes:
       - quanly_xegh_postgres_prod_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
     networks:
-      - quanly-xegh-network-prod
+      quanly-xegh-network-prod:
+      shared-database-network-prod:
+        aliases:
+          - shared-postgres-prod
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   redis:
     image: redis:7-alpine
-    container_name: quanly-xegh-redis
+    container_name: quanly-xegh-redis-prod
     restart: unless-stopped
-    ports:
-      - "6379:6379"
-    command: redis-server --appendonly yes
+
+    command:
+      [
+        "redis-server",
+        "--appendonly",
+        "yes"
+      ]
+
     volumes:
-      - quanly_xegh_redis_data:/data
+      - quanly_xegh_redis_prod_data:/data
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "redis-cli",
+          "ping"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
     networks:
-      - quanly-xegh-network
+      - quanly-xegh-network-prod
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   be:
     container_name: quanly-xegh-be-prod
+    restart: unless-stopped
+    init: true
+
     build:
       context: ./be
       dockerfile: Dockerfile
-    restart: unless-stopped
+
     env_file:
       - .env
+
     environment:
       NODE_ENV: production
+
     ports:
-      - "${BE_PORT}:${BE_PORT}"
+      - "127.0.0.1:${BE_PORT}:${BE_PORT}"
+
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
     networks:
       - quanly-xegh-network-prod
 
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "5"
+
   admin:
     container_name: quanly-xegh-admin-prod
+    restart: unless-stopped
+    init: true
+
     build:
       context: ./admin
       dockerfile: Dockerfile
-    restart: unless-stopped
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+
     env_file:
       - .env
+
     environment:
       NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+
     ports:
-      - "${ADMIN_PORT}:${ADMIN_PORT}"
+      - "127.0.0.1:${ADMIN_PORT}:${ADMIN_PORT}"
+
     depends_on:
-      - be
+      be:
+        condition: service_started
+
     networks:
       - quanly-xegh-network-prod
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   customer-web:
     container_name: quanly-xegh-customer-web-prod
+    restart: unless-stopped
+    init: true
+
     build:
       context: ./customer-web
       dockerfile: Dockerfile
@@ -70,46 +151,79 @@ services:
         NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
         NEXT_PUBLIC_COMPANY_ID: ${NEXT_PUBLIC_COMPANY_ID}
         NEXT_PUBLIC_COMPANY_NAME: ${NEXT_PUBLIC_COMPANY_NAME}
-    restart: unless-stopped
+
     env_file:
       - .env
+
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
       NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: ${NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}
       NEXT_PUBLIC_COMPANY_ID: ${NEXT_PUBLIC_COMPANY_ID}
       NEXT_PUBLIC_COMPANY_NAME: ${NEXT_PUBLIC_COMPANY_NAME}
+
     ports:
-      - "${CUSTOMER_WEB_PORT}:${CUSTOMER_WEB_PORT}"
+      - "127.0.0.1:${CUSTOMER_WEB_PORT}:${CUSTOMER_WEB_PORT}"
+
     depends_on:
-      - be
+      be:
+        condition: service_started
+
     networks:
       - quanly-xegh-network-prod
 
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
   driver-web:
     container_name: quanly-xegh-driver-web-prod
+    restart: unless-stopped
+    init: true
+
     build:
       context: ./driver-web
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
-    restart: unless-stopped
+
     env_file:
       - .env
+
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+
     ports:
-      - "${DRIVER_WEB_PORT}:${DRIVER_WEB_PORT}"
+      - "127.0.0.1:${DRIVER_WEB_PORT}:${DRIVER_WEB_PORT}"
+
     depends_on:
-      - be
+      be:
+        condition: service_started
+
     networks:
       - quanly-xegh-network-prod
-      
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
 volumes:
   quanly_xegh_postgres_prod_data:
+    name: quanly_xegh_postgres_prod_data
+
   quanly_xegh_redis_prod_data:
+    name: quanly_xegh_redis_prod_data
 
 networks:
   quanly-xegh-network-prod:
+    name: quanly-xegh-network-prod
     driver: bridge
+
+  shared-database-network-prod:
+    external: true
+    name: shared-database-network-prod

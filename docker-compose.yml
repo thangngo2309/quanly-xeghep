@@ -3,101 +3,158 @@ services:
     image: postgis/postgis:16-3.4-alpine
     container_name: quanly-xegh-postgres
     restart: unless-stopped
+
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+
     ports:
       - "5432:5432"
+
     volumes:
       - quanly_xegh_postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
     networks:
       - quanly-xegh-network
+      - shared-database-network
 
   redis:
     image: redis:7-alpine
     container_name: quanly-xegh-redis
     restart: unless-stopped
+
     command: redis-server --appendonly yes
+
     ports:
       - "6379:6379"
+
     volumes:
       - quanly_xegh_redis_data:/data
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "redis-cli",
+          "ping"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
     networks:
       - quanly-xegh-network
 
   be:
     container_name: quanly-xegh-be
+    restart: unless-stopped
+
     build:
       context: ./be
       dockerfile: Dockerfile.dev
-    restart: unless-stopped
+
     env_file:
       - .env
+
     ports:
       - "${BE_PORT}:${BE_PORT}"
+
     volumes:
       - ./be:/app
-      - /app/node_modules
+      - quanly_xegh_be_node_modules:/app/node_modules
+
     depends_on:
-      - postgres
-      - redis
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
     networks:
       - quanly-xegh-network
 
   admin:
     container_name: quanly-xegh-admin
+    restart: unless-stopped
+
     build:
       context: ./admin
       dockerfile: Dockerfile.dev
-    restart: unless-stopped
+
     env_file:
       - .env
+
     ports:
       - "${ADMIN_PORT}:${ADMIN_PORT}"
+
     volumes:
       - ./admin:/app
-      - /app/node_modules
-      - /app/.next
+      - quanly_xegh_admin_node_modules:/app/node_modules
+      - quanly_xegh_admin_next:/app/.next
+
     depends_on:
       - be
+
     networks:
       - quanly-xegh-network
+
   customer-web:
     container_name: quanly-xegh-customer-web
+    restart: unless-stopped
+
     build:
       context: ./customer-web
       dockerfile: Dockerfile.dev
-    restart: unless-stopped
+
     env_file:
       - .env
+
     ports:
       - "${CUSTOMER_WEB_PORT}:${CUSTOMER_WEB_PORT}"
+
     volumes:
       - ./customer-web:/app
-      - /app/node_modules
-      - /app/.next
+      - quanly_xegh_customer_node_modules:/app/node_modules
+      - quanly_xegh_customer_next:/app/.next
+
     depends_on:
       - be
+
     networks:
       - quanly-xegh-network
 
   driver-web:
     container_name: quanly-xegh-driver-web
+    restart: unless-stopped
+
     build:
       context: ./driver-web
       dockerfile: Dockerfile.dev
-    restart: unless-stopped
+
     env_file:
       - .env
+
     ports:
       - "${DRIVER_WEB_PORT}:${DRIVER_WEB_PORT}"
+
     volumes:
       - ./driver-web:/app
-      - /app/node_modules
-      - /app/.next
+      - quanly_xegh_driver_node_modules:/app/node_modules
+      - quanly_xegh_driver_next:/app/.next
+
     depends_on:
       - be
+
     networks:
       - quanly-xegh-network
 
@@ -105,6 +162,21 @@ volumes:
   quanly_xegh_postgres_data:
   quanly_xegh_redis_data:
 
+  quanly_xegh_be_node_modules:
+
+  quanly_xegh_admin_node_modules:
+  quanly_xegh_admin_next:
+
+  quanly_xegh_customer_node_modules:
+  quanly_xegh_customer_next:
+
+  quanly_xegh_driver_node_modules:
+  quanly_xegh_driver_next:
+
 networks:
   quanly-xegh-network:
+    driver: bridge
+
+  shared-database-network:
+    name: shared-database-network
     driver: bridge
