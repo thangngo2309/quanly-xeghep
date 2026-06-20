@@ -37,7 +37,7 @@ function redirectToLogin() {
   clearAuthData();
 
   if (typeof window !== 'undefined') {
-    window.location.href = '/login';
+    window.location.href = '/xeghep/admin/login';
   }
 }
 

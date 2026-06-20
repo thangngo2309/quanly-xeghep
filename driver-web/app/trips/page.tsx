@@ -106,7 +106,7 @@ export default function DriverTripsPage() {
     const token = getDriverToken();
   
     if (!token) {
-      window.location.href = '/login';
+      window.location.href = '/xeghep/driver/login';
       return;
     }
   
@@ -122,7 +122,7 @@ export default function DriverTripsPage() {
     } catch (error: any) {
       if (error?.response?.status === 401) {
         clearDriverToken();
-        window.location.href = '/login';
+        window.location.href = '/xeghep/driver/login';
         return;
       }
   
@@ -138,7 +138,7 @@ export default function DriverTripsPage() {
 
   function handleLogout() {
     clearDriverToken();
-    window.location.href = "/login";
+    window.location.href = "/xeghep/driver/login";
   }
 
   return (

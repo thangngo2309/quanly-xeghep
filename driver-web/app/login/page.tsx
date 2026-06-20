@@ -41,7 +41,7 @@ export default function DriverLoginPage() {
     const token = getDriverToken();
 
     if (token) {
-      window.location.href = '/trips';
+      window.location.href = 'xeghep/driver/trips';
     }
   }, []);
 
@@ -55,7 +55,7 @@ export default function DriverLoginPage() {
         password: values.password,
       });
 
-      window.location.href = '/trips';
+      window.location.href = '/xeghep/driver/trips';
     } catch (error) {
       setErrorMessage(getApiErrorMessage(error));
     } finally {
