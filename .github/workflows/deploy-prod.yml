@@ -50,7 +50,7 @@ jobs:
           PROJECT_DIR="/root/quanly-xeghep"
           BRANCH="master"
           COMPOSE_FILE="docker-compose.prod.yml"
-          ENV_FILE=".env.prod"
+          ENV_FILE=".env"
 
           echo "========================================"
           echo "DEPLOY QUAN LY XE GHEP"
