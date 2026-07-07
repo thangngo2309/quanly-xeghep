@@ -9,3 +9,9 @@ export enum UserStatus {
   INACTIVE = 'INACTIVE',
   BLOCKED = 'BLOCKED',
 }
+
+export enum DriverEmploymentType {
+  COMPANY_DRIVER = 'COMPANY_DRIVER',
+  OWNER_OPERATOR = 'OWNER_OPERATOR',
+  CONTRACT_DRIVER = 'CONTRACT_DRIVER',
+}

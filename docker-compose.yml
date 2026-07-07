@@ -74,6 +74,10 @@ services:
       - ./be:/app
       - quanly_xegh_be_node_modules:/app/node_modules
 
+      # Lưu file upload trực tiếp trên máy host.
+      # Dữ liệu không mất khi rebuild container.
+      - ./be/uploads:/app/uploads
+
     depends_on:
       postgres:
         condition: service_healthy
@@ -103,7 +107,8 @@ services:
       - quanly_xegh_admin_next:/app/.next
 
     depends_on:
-      - be
+      be:
+        condition: service_started
 
     networks:
       - quanly-xegh-network
@@ -128,7 +133,8 @@ services:
       - quanly_xegh_customer_next:/app/.next
 
     depends_on:
-      - be
+      be:
+        condition: service_started
 
     networks:
       - quanly-xegh-network
@@ -153,7 +159,8 @@ services:
       - quanly_xegh_driver_next:/app/.next
 
     depends_on:
-      - be
+      be:
+        condition: service_started
 
     networks:
       - quanly-xegh-network

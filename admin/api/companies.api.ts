@@ -1,18 +1,35 @@
-import { http } from './http';
+import { http } from "./http";
 
-export type CompanyStatus = 'ACTIVE' | 'INACTIVE';
+export type CompanyStatus =
+  | "ACTIVE"
+  | "INACTIVE";
+
+export type CompanyType =
+  | "TRANSPORT_COMPANY"
+  | "OWNER_OPERATOR";
 
 export type CompanyItem = {
   id: string;
   code: string;
   name: string;
+
   phone?: string | null;
   email?: string | null;
   taxCode?: string | null;
   representativeName?: string | null;
   address?: string | null;
+
   status: CompanyStatus;
   note?: string | null;
+
+  companyType: CompanyType;
+  ownerUserId?: string | null;
+
+  businessRegistrationNumber?: string | null;
+  businessRegistrationIssuedDate?: string | null;
+  businessRegistrationIssuedPlace?: string | null;
+  businessRegistrationDocuments: string[];
+
   createdAt: string;
   updatedAt: string;
 };
@@ -21,9 +38,9 @@ export type CompanyListQuery = {
   page?: number;
   limit?: number;
   sortBy?: string;
-  sortOrder?: 'asc' | 'desc';
+  sortOrder?: "asc" | "desc";
   keyword?: string;
-  status?: CompanyStatus | '';
+  status?: CompanyStatus | "";
 };
 
 export type CompanyListResponse = {
@@ -37,27 +54,62 @@ export type CompanyListResponse = {
 export type CreateCompanyPayload = {
   code: string;
   name: string;
+
   phone?: string;
   email?: string;
   taxCode?: string;
   representativeName?: string;
   address?: string;
+
   status?: CompanyStatus;
   note?: string;
+
+  businessRegistrationNumber: string;
+  businessRegistrationIssuedDate?: string;
+  businessRegistrationIssuedPlace: string;
+  businessRegistrationDocuments: string[];
 };
 
-export type UpdateCompanyPayload = Partial<CreateCompanyPayload>;
+export type UpdateCompanyPayload = {
+  code?: string;
+  name?: string;
 
-export async function getCompaniesApi(query: CompanyListQuery) {
-  const response = await http.get<CompanyListResponse>('/companies', {
-    params: query,
-  });
+  phone?: string;
+  email?: string;
+  taxCode?: string;
+  representativeName?: string;
+  address?: string;
+
+  status?: CompanyStatus;
+  note?: string;
+
+  businessRegistrationNumber?: string;
+  businessRegistrationIssuedDate?: string;
+  businessRegistrationIssuedPlace?: string;
+  businessRegistrationDocuments?: string[];
+};
+
+export async function getCompaniesApi(
+  query: CompanyListQuery,
+) {
+  const response =
+    await http.get<CompanyListResponse>(
+      "/companies",
+      {
+        params: query,
+      },
+    );
 
   return response.data;
 }
 
-export async function createCompanyApi(payload: CreateCompanyPayload) {
-  const response = await http.post<CompanyItem>('/companies', payload);
+export async function createCompanyApi(
+  payload: CreateCompanyPayload,
+) {
+  const response = await http.post<CompanyItem>(
+    "/companies",
+    payload,
+  );
 
   return response.data;
 }
@@ -66,13 +118,20 @@ export async function updateCompanyApi(
   id: string,
   payload: UpdateCompanyPayload,
 ) {
-  const response = await http.patch<CompanyItem>(`/companies/${id}`, payload);
+  const response = await http.patch<CompanyItem>(
+    `/companies/${id}`,
+    payload,
+  );
 
   return response.data;
 }
 
-export async function deleteCompanyApi(id: string) {
-  const response = await http.delete<{ message: string }>(`/companies/${id}`);
+export async function deleteCompanyApi(
+  id: string,
+) {
+  const response = await http.delete<{
+    message: string;
+  }>(`/companies/${id}`);
 
   return response.data;
 }

@@ -9,28 +9,30 @@ import type {
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { SubmitHandler, useForm } from "react-hook-form";
 
+import { getCompaniesApi } from "@/api/companies.api";
+import { getApiErrorMessage } from "@/api/http";
 import {
+  createOwnerOperatorApi,
   createUserApi,
   deleteUserApi,
   getUsersApi,
   updateUserApi,
+  type CreateOwnerOperatorPayload,
   type CreateUserPayload,
   type UpdateUserPayload,
   type UserItem,
   type UserRole,
   type UserStatus,
 } from "@/api/users.api";
-import { getApiErrorMessage } from "@/api/http";
-import { HDataTable } from "@/components/datatable";
-import { HInput, HDropdown, HAutocomplete } from "@/components/form";
 import { useHDialog } from "@/components/dialog";
+import { HDataTable } from "@/components/datatable";
+import { HAutocomplete, HDropdown, HInput } from "@/components/form";
+import { getAuthUser } from "@/helper/auth-storage";
+import { AdminLayout } from "../layouts/admin";
 import {
   UserFormDialog,
   type UserFormValues,
 } from "./components/UserFormDialog";
-import { AdminLayout } from "../layouts/admin";
-import { getAuthUser } from "@/helper/auth-storage";
-import { getCompaniesApi } from "@/api/companies.api";
 
 type UserSearchForm = {
   keyword: string;
@@ -248,7 +250,7 @@ export default function UsersPage() {
     try {
       const sort = sortModel[0];
 
-      const query: any = {
+      const query = {
         page: paginationModel.page + 1,
         limit: paginationModel.pageSize,
         sortBy: sort?.field || "createdAt",
@@ -263,8 +265,12 @@ export default function UsersPage() {
       };
 
       const data = await getUsersApi(query);
-
-      const normalized = normalizeUserResponse(data, query);
+      const normalized = normalizeUserResponse(data, {
+        ...query,
+        keyword: searchValues.keyword,
+        role: currentRole === "ADMIN" ? "DRIVER" : activeRole,
+        status: searchValues.status,
+      });
 
       setRows(normalized.items);
       setRowCount(normalized.total);
@@ -278,18 +284,18 @@ export default function UsersPage() {
     }
   }, [
     activeRole,
+    currentRole,
     dialog,
     paginationModel.page,
     paginationModel.pageSize,
+    searchValues.companyId,
     searchValues.keyword,
     searchValues.status,
-    searchValues.companyId,
     sortModel,
   ]);
 
   useEffect(() => {
     const user = getAuthUser();
-
     const role = user?.role as UserRole | undefined;
 
     if (role) {
@@ -321,6 +327,79 @@ export default function UsersPage() {
 
     return roleTabs;
   }, [currentRole]);
+
+  function handleTabChange(_event: React.SyntheticEvent, value: UserRole | "") {
+    setActiveRole(value);
+
+    setPaginationModel((prev) => ({
+      ...prev,
+      page: 0,
+    }));
+  }
+
+  const handleSearch: SubmitHandler<UserSearchForm> = (values) => {
+    setSearchValues(values);
+
+    setPaginationModel((prev) => ({
+      ...prev,
+      page: 0,
+    }));
+  };
+
+  function handleResetSearch() {
+    const emptyValues: UserSearchForm = {
+      keyword: "",
+      companyId: "",
+      status: "",
+    };
+
+    searchMethods.reset(emptyValues);
+    setSearchValues(emptyValues);
+
+    setPaginationModel((prev) => ({
+      ...prev,
+      page: 0,
+    }));
+  }
+
+  function openCreateDialog() {
+    setSelectedUser(null);
+    setFormMode("add");
+    setFormOpen(true);
+  }
+
+  function openEditDialog(user: UserItem) {
+    setSelectedUser(user);
+    setFormMode("edit");
+    setFormOpen(true);
+  }
+
+  async function handleDelete(user: UserItem) {
+    const ok = await dialog.confirm({
+      title: "Xác nhận xóa",
+      message: `Bạn có chắc chắn muốn xóa người dùng "${user.fullName}" không?`,
+      confirmText: "Xóa",
+      cancelText: "Hủy",
+    });
+
+    if (!ok) return;
+
+    try {
+      await deleteUserApi(user.id);
+
+      await dialog.info({
+        title: "Thành công",
+        message: "Đã xóa người dùng thành công.",
+      });
+
+      await loadData();
+    } catch (error) {
+      await dialog.error({
+        title: "Lỗi xóa người dùng",
+        message: getApiErrorMessage(error),
+      });
+    }
+  }
 
   const columns = useMemo<GridColDef<UserItem>[]>(
     () => [
@@ -356,9 +435,9 @@ export default function UsersPage() {
       },
       {
         field: "company",
-        headerName: "Nhà xe",
+        headerName: "Nhà xe/Đơn vị",
         flex: 1,
-        minWidth: 200,
+        minWidth: 220,
         sortable: false,
         renderCell: (params) => {
           const company = params.row.company;
@@ -366,6 +445,49 @@ export default function UsersPage() {
           if (!company) return "-";
 
           return `${company.name} (${company.code})`;
+        },
+      },
+      {
+        field: "documents",
+        headerName: "Giấy tờ",
+        width: 200,
+        sortable: false,
+        filterable: false,
+        renderCell: (params) => {
+          if (params.row.role !== "DRIVER") return "-";
+
+          const driverLicenseCount =
+            params.row.driverLicenseDocuments?.length || 0;
+          const businessRegistrationCount =
+            params.row.company?.businessRegistrationDocuments?.length || 0;
+
+          return (
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 0.75,
+                flexWrap: "wrap",
+                height: "100%",
+              }}
+            >
+              <Chip
+                size="small"
+                label={`GPLX: ${driverLicenseCount}`}
+                color={driverLicenseCount > 0 ? "success" : "error"}
+                variant="outlined"
+              />
+
+              {params.row.company?.companyType === "OWNER_OPERATOR" && (
+                <Chip
+                  size="small"
+                  label={`ĐKKD: ${businessRegistrationCount}`}
+                  color={businessRegistrationCount > 0 ? "success" : "error"}
+                  variant="outlined"
+                />
+              )}
+            </Box>
+          );
         },
       },
       {
@@ -432,7 +554,7 @@ export default function UsersPage() {
               color="error"
               onClick={(event) => {
                 event.stopPropagation();
-                handleDelete(params.row);
+                void handleDelete(params.row);
               }}
             >
               Xóa
@@ -441,81 +563,8 @@ export default function UsersPage() {
         ),
       },
     ],
-    []
+    [loadData]
   );
-
-  function handleTabChange(_event: React.SyntheticEvent, value: UserRole | "") {
-    setActiveRole(value);
-
-    setPaginationModel((prev) => ({
-      ...prev,
-      page: 0,
-    }));
-  }
-
-  const handleSearch: SubmitHandler<UserSearchForm> = (values) => {
-    setSearchValues(values);
-
-    setPaginationModel((prev) => ({
-      ...prev,
-      page: 0,
-    }));
-  };
-
-  function handleResetSearch() {
-    const emptyValues: UserSearchForm = {
-      keyword: "",
-      companyId: "",
-      status: "",
-    };
-
-    searchMethods.reset(emptyValues);
-    setSearchValues(emptyValues);
-
-    setPaginationModel((prev) => ({
-      ...prev,
-      page: 0,
-    }));
-  }
-
-  function openCreateDialog() {
-    setSelectedUser(null);
-    setFormMode("add");
-    setFormOpen(true);
-  }
-
-  function openEditDialog(user: UserItem) {
-    setSelectedUser(user);
-    setFormMode("edit");
-    setFormOpen(true);
-  }
-
-  async function handleDelete(user: UserItem) {
-    const ok = await dialog.confirm({
-      title: "Xác nhận xóa",
-      message: `Bạn có chắc chắn muốn xóa người dùng "${user.fullName}" không?`,
-      confirmText: "Xóa",
-      cancelText: "Hủy",
-    });
-
-    if (!ok) return;
-
-    try {
-      await deleteUserApi(user.id);
-
-      await dialog.info({
-        title: "Thành công",
-        message: "Đã xóa người dùng thành công.",
-      });
-
-      loadData();
-    } catch (error) {
-      await dialog.error({
-        title: "Lỗi xóa người dùng",
-        message: getApiErrorMessage(error),
-      });
-    }
-  }
 
   const handleSubmitUserForm: SubmitHandler<UserFormValues> = async (
     values
@@ -524,54 +573,153 @@ export default function UsersPage() {
 
     try {
       if (formMode === "add") {
-        const payload: CreateUserPayload = {
-          fullName: values.fullName,
-          phone: values.phone,
-          email: values.email || undefined,
-          password: values.password,
-          role: currentRole === "ADMIN" ? "DRIVER" : values.role,
-          status: values.status,
-          companyId:
-            currentRole === "SUPER_ADMIN" && values.role !== "SUPER_ADMIN"
-              ? values.companyId
-              : undefined,
-        };
+        const isOwnerOperator =
+          values.role === "DRIVER" &&
+          values.driverAccountType === "OWNER_OPERATOR";
 
-        await createUserApi(payload);
-      } else if (selectedUser) {
-        const payload: UpdateUserPayload = {
-          fullName: values.fullName,
-          phone: values.phone,
-          email: values.email || undefined,
-          role: currentRole === "ADMIN" ? "DRIVER" : values.role,
-          status: values.status,
-          companyId:
-            currentRole === "SUPER_ADMIN" && values.role !== "SUPER_ADMIN"
-              ? values.companyId
-              : undefined,
-        };
+        if (isOwnerOperator) {
+          const payload: CreateOwnerOperatorPayload = {
+            fullName: values.fullName.trim(),
+            phone: values.phone.trim(),
+            email: values.email.trim() || undefined,
+            password: values.password,
+            status: values.status,
+            driverLicenseDocuments: values.driverLicenseDocuments,
 
-        if (values.password) {
-          payload.password = values.password;
+            company: {
+              code: values.ownerCompanyCode.trim().toUpperCase() || undefined,
+              name: values.ownerCompanyName.trim(),
+              phone: values.phone.trim(),
+              email: values.email.trim() || undefined,
+              taxCode: values.ownerTaxCode.trim() || undefined,
+              representativeName:
+                values.ownerRepresentativeName.trim() || values.fullName.trim(),
+              address: values.ownerAddress.trim() || undefined,
+              businessRegistrationNumber:
+                values.ownerBusinessRegistrationNumber.trim(),
+              businessRegistrationIssuedDate:
+                values.ownerBusinessRegistrationIssuedDate || undefined,
+              businessRegistrationIssuedPlace:
+                values.ownerBusinessRegistrationIssuedPlace.trim() || undefined,
+              businessRegistrationDocuments:
+                values.ownerBusinessRegistrationDocuments,
+            },
+          };
+
+          await createOwnerOperatorApi(payload);
+        } else {
+          const payload: CreateUserPayload = {
+            fullName: values.fullName.trim(),
+            phone: values.phone.trim(),
+            email: values.email.trim() || undefined,
+            password: values.password,
+            role: values.role,
+            status: values.status,
+            companyId:
+              values.role === "SUPER_ADMIN"
+                ? undefined
+                : values.companyId || undefined,
+            driverLicenseDocuments:
+              values.role === "DRIVER"
+                ? values.driverLicenseDocuments
+                : undefined,
+          };
+
+          await createUserApi(payload);
         }
+      } else {
+        if (!selectedUser) {
+          throw new Error("Không xác định được người dùng cần cập nhật");
+        }
+
+        const selectedCompanyId =
+          selectedUser.companyId || selectedUser.company?.id || null;
+
+        const isOwnerOperator =
+          selectedUser.role === "DRIVER" &&
+          selectedUser.company?.companyType === "OWNER_OPERATOR" &&
+          selectedUser.company.ownerUserId === selectedUser.id;
+
+        const payload: UpdateUserPayload = {
+          fullName: values.fullName.trim(),
+          phone: values.phone.trim(),
+          email: values.email.trim() || undefined,
+          password: values.password || undefined,
+          role: values.role,
+          status: values.status,
+
+          companyId:
+            values.role === "SUPER_ADMIN"
+              ? null
+              : isOwnerOperator
+              ? selectedCompanyId
+              : values.companyId || selectedCompanyId,
+
+          driverLicenseDocuments:
+            values.role === "DRIVER"
+              ? values.driverLicenseDocuments
+              : undefined,
+
+          ownerCompany: isOwnerOperator
+            ? {
+                name: values.ownerCompanyName.trim(),
+
+                phone: values.phone.trim(),
+
+                email: values.email.trim() || undefined,
+
+                taxCode: values.ownerTaxCode.trim() || undefined,
+
+                representativeName:
+                  values.ownerRepresentativeName.trim() ||
+                  values.fullName.trim(),
+
+                address: values.ownerAddress.trim() || undefined,
+
+                businessRegistrationNumber:
+                  values.ownerBusinessRegistrationNumber.trim() || undefined,
+
+                businessRegistrationIssuedDate:
+                  values.ownerBusinessRegistrationIssuedDate || undefined,
+
+                businessRegistrationIssuedPlace:
+                  values.ownerBusinessRegistrationIssuedPlace.trim() ||
+                  undefined,
+
+                businessRegistrationDocuments:
+                  values.ownerBusinessRegistrationDocuments,
+              }
+            : undefined,
+        };
 
         await updateUserApi(selectedUser.id, payload);
       }
 
       setFormOpen(false);
+      setSelectedUser(null);
+
+      await loadData();
 
       await dialog.info({
-        title: "Thành công",
-        message:
+        title:
           formMode === "add"
-            ? "Tạo người dùng thành công."
-            : "Cập nhật người dùng thành công.",
+            ? "Tạo người dùng thành công"
+            : "Cập nhật người dùng thành công",
+        message:
+          formMode === "add" &&
+          values.role === "DRIVER" &&
+          values.driverAccountType === "OWNER_OPERATOR"
+            ? "Đã tạo tài xế, đơn vị kinh doanh và lưu giấy tờ."
+            : formMode === "add"
+            ? "Tài khoản và giấy tờ đã được tạo."
+            : "Thông tin tài khoản và giấy tờ đã được cập nhật.",
       });
-
-      loadData();
     } catch (error) {
       await dialog.error({
-        title: "Lỗi lưu dữ liệu",
+        title:
+          formMode === "add"
+            ? "Không thể tạo người dùng"
+            : "Không thể cập nhật người dùng",
         message: getApiErrorMessage(error),
       });
     } finally {
@@ -684,7 +832,10 @@ export default function UsersPage() {
           mode={formMode}
           initialValues={selectedUser}
           loading={formLoading}
-          onClose={() => setFormOpen(false)}
+          onClose={() => {
+            setFormOpen(false);
+            setSelectedUser(null);
+          }}
           onSubmit={handleSubmitUserForm}
           currentRole={currentRole}
           companyOptions={companyOptions}

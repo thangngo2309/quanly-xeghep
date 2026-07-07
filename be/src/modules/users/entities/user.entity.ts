@@ -1,4 +1,8 @@
-import { UserRole, UserStatus } from 'src/enums/user.enums';
+import {
+  DriverEmploymentType,
+  UserRole,
+  UserStatus,
+} from 'src/enums/user.enums';
 import { Company } from 'src/modules/companies/entities/company.entity';
 import {
   Column,
@@ -91,6 +95,21 @@ export class User {
   })
   lastLoginAt: Date | null;
 
+  @Column({
+    name: 'driver_employment_type',
+    type: 'enum',
+    enum: DriverEmploymentType,
+    nullable: true,
+  })
+  driverEmploymentType: DriverEmploymentType | null;
+
+  @Column({
+    name: 'driver_license_documents',
+    type: 'jsonb',
+    default: () => "'[]'::jsonb",
+  })
+  driverLicenseDocuments: string[];
+  
   @CreateDateColumn({
     name: 'created_at',
     type: 'timestamptz',

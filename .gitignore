@@ -50,10 +50,6 @@ Thumbs.db
 docker-data/
 *.pid
 
-# Uploads / generated files
-uploads/
-be/uploads/
-
 # Coverage
 coverage/
 be/coverage/

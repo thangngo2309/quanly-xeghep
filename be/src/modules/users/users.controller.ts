@@ -22,6 +22,7 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { UsersService } from './users.service';
 import { UserRole } from 'src/enums/user.enums';
 import { ListUsersQueryDto } from './dto/list-users-query.dto';
+import { CreateOwnerOperatorDto } from './dto/create-owner-operator.dto';
 
 @ApiTags('Users')
 @ApiBearerAuth()
@@ -48,9 +49,18 @@ export class UsersController {
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   findAll(
     @Query() query: ListUsersQueryDto,
-    @CurrentUser() currentUser: CurrentUserData
+    @CurrentUser() currentUser: CurrentUserData,
   ) {
     return this.usersService.findAll(query, currentUser);
+  }
+
+  @Post('owner-operator')
+  @Roles(UserRole.SUPER_ADMIN)
+  createOwnerOperator(
+    @Body() dto: CreateOwnerOperatorDto,
+    @CurrentUser() currentUser: CurrentUserData,
+  ) {
+    return this.usersService.createOwnerOperator(dto, currentUser);
   }
 
   @Get(':id')
@@ -62,19 +72,16 @@ export class UsersController {
   @Patch(':id')
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
   update(
-    @Param('id') id: string, 
+    @Param('id') id: string,
     @Body() updateUserDto: UpdateUserDto,
-    @CurrentUser() currentUser: CurrentUserData
+    @CurrentUser() currentUser: CurrentUserData,
   ) {
     return this.usersService.update(id, updateUserDto, currentUser);
   }
 
   @Delete(':id')
   @Roles(UserRole.SUPER_ADMIN, UserRole.ADMIN)
-  remove(
-    @Param('id') id: string,
-    @CurrentUser() currentUser: CurrentUserData
-  ) {
+  remove(@Param('id') id: string, @CurrentUser() currentUser: CurrentUserData) {
     return this.usersService.remove(id, currentUser);
   }
 }

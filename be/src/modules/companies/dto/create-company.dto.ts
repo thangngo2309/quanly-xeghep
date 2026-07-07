@@ -1,65 +1,99 @@
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  ArrayUnique,
+  IsArray,
+  IsDateString,
   IsEmail,
   IsEnum,
   IsNotEmpty,
   IsOptional,
   IsString,
+  Matches,
   MaxLength,
 } from 'class-validator';
 import { CompanyStatus } from 'src/enums/company.enum';
 
+const UPLOAD_DOCUMENT_PATH_REGEX = /^\/uploads\/documents\//;
+
 export class CreateCompanyDto {
-  @ApiProperty({ example: 'NHAXE001' })
   @IsString()
   @IsNotEmpty()
   @MaxLength(50)
   code: string;
 
-  @ApiProperty({ example: 'Nhà xe An Phú' })
   @IsString()
   @IsNotEmpty()
   @MaxLength(255)
   name: string;
 
-  @ApiPropertyOptional({ example: '0901234567' })
   @IsOptional()
   @IsString()
   @MaxLength(20)
   phone?: string;
 
-  @ApiPropertyOptional({ example: 'contact@nhaxe.com' })
   @IsOptional()
   @IsEmail()
+  @MaxLength(255)
   email?: string;
 
-  @ApiPropertyOptional({ example: '0401234567' })
   @IsOptional()
   @IsString()
   @MaxLength(50)
   taxCode?: string;
 
-  @ApiPropertyOptional({ example: 'Nguyễn Văn A' })
   @IsOptional()
   @IsString()
   @MaxLength(255)
   representativeName?: string;
 
-  @ApiPropertyOptional({ example: 'Đà Nẵng' })
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   address?: string;
 
-  @ApiPropertyOptional({
-    enum: CompanyStatus,
-    example: CompanyStatus.ACTIVE,
-  })
   @IsOptional()
   @IsEnum(CompanyStatus)
   status?: CompanyStatus;
 
-  @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @MaxLength(2000)
   note?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  businessRegistrationNumber?: string;
+
+  @IsOptional()
+  @IsDateString()
+  businessRegistrationIssuedDate?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  businessRegistrationIssuedPlace?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1, {
+    message: 'Vui lòng tải ít nhất một file giấy đăng ký kinh doanh',
+  })
+  @ArrayMaxSize(10, {
+    message: 'Chỉ được tải tối đa 10 file giấy đăng ký kinh doanh',
+  })
+  @ArrayUnique({
+    message: 'Danh sách giấy đăng ký kinh doanh chứa file trùng lặp',
+  })
+  @IsString({
+    each: true,
+    message: 'Đường dẫn giấy đăng ký kinh doanh phải là chuỗi',
+  })
+  @Matches(UPLOAD_DOCUMENT_PATH_REGEX, {
+    each: true,
+    message:
+      'Đường dẫn giấy đăng ký kinh doanh phải bắt đầu bằng /uploads/documents/',
+  })
+  businessRegistrationDocuments?: string[];
 }

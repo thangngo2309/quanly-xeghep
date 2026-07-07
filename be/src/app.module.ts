@@ -16,6 +16,7 @@ import { RouteLinesModule } from './modules/route-lines/route-lines.module';
 import { RouteSchedulesModule } from './modules/route-schedules/route-schedules.module';
 import { PublicModule } from './modules/public/public.module';
 import { DriverModule } from './modules/driver/driver.module';
+import { UploadsModule } from './modules/uploads/uploads.module';
 
 @Module({
   imports: [
@@ -45,7 +46,8 @@ import { DriverModule } from './modules/driver/driver.module';
     RouteLinesModule,
     RouteSchedulesModule,
     PublicModule,
-    DriverModule
+    DriverModule,
+    UploadsModule
   ],
   controllers: [AppController],
   providers: [AppService],

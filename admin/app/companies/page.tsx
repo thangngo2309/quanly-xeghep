@@ -1,13 +1,28 @@
 "use client";
 
-import { Box, Button, Chip, Tab, Tabs, Typography } from "@mui/material";
+import {
+  Box,
+  Button,
+  Chip,
+  Tab,
+  Tabs,
+  Typography,
+} from "@mui/material";
 import type {
   GridColDef,
   GridPaginationModel,
   GridSortModel,
 } from "@mui/x-data-grid";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { SubmitHandler, useForm } from "react-hook-form";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import type {
+  SubmitHandler,
+} from "react-hook-form";
+import { useForm } from "react-hook-form";
 
 import {
   createCompanyApi,
@@ -23,11 +38,11 @@ import { getApiErrorMessage } from "@/api/http";
 import { HDataTable } from "@/components/datatable";
 import { useHDialog } from "@/components/dialog";
 import { HInput } from "@/components/form";
+import { AdminLayout } from "../layouts/admin";
 import {
   CompanyFormDialog,
   type CompanyFormValues,
 } from "./components/CompanyFormDialog";
-import { AdminLayout } from "../layouts/admin";
 
 type CompanySearchForm = {
   keyword: string;
@@ -51,7 +66,9 @@ const statusTabs: Array<{
   },
 ];
 
-function getStatusLabel(status: string) {
+function getStatusLabel(
+  status: CompanyStatus,
+) {
   switch (status) {
     case "ACTIVE":
       return "Hoạt động";
@@ -64,87 +81,210 @@ function getStatusLabel(status: string) {
   }
 }
 
+function getCompanyTypeLabel(
+  company: CompanyItem,
+) {
+  return company.companyType ===
+    "OWNER_OPERATOR"
+    ? "Chủ xe kinh doanh độc lập"
+    : "Nhà xe";
+}
+
 export default function CompaniesPage() {
   const dialog = useHDialog();
 
-  const searchMethods = useForm<CompanySearchForm>({
-    defaultValues: {
-      keyword: "",
-    },
-  });
+  const searchMethods =
+    useForm<CompanySearchForm>({
+      defaultValues: {
+        keyword: "",
+      },
+    });
 
-  const [rows, setRows] = useState<CompanyItem[]>([]);
-  const [rowCount, setRowCount] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const [rows, setRows] = useState<
+    CompanyItem[]
+  >([]);
 
-  const [activeStatus, setActiveStatus] = useState<CompanyStatus | "">("");
-  const [searchValues, setSearchValues] = useState<CompanySearchForm>({
+  const [rowCount, setRowCount] =
+    useState(0);
+
+  const [loading, setLoading] =
+    useState(false);
+
+  const [
+    activeStatus,
+    setActiveStatus,
+  ] = useState<CompanyStatus | "">("");
+
+  const [
+    searchValues,
+    setSearchValues,
+  ] = useState<CompanySearchForm>({
     keyword: "",
   });
 
-  const [paginationModel, setPaginationModel] = useState<GridPaginationModel>({
+  const [
+    paginationModel,
+    setPaginationModel,
+  ] = useState<GridPaginationModel>({
     page: 0,
     pageSize: 10,
   });
 
-  const [sortModel, setSortModel] = useState<GridSortModel>([
+  const [
+    sortModel,
+    setSortModel,
+  ] = useState<GridSortModel>([
     {
       field: "createdAt",
       sort: "desc",
     },
   ]);
 
-  const [formOpen, setFormOpen] = useState(false);
-  const [formMode, setFormMode] = useState<"add" | "edit">("add");
-  const [selectedCompany, setSelectedCompany] = useState<CompanyItem | null>(
-    null
+  const [formOpen, setFormOpen] =
+    useState(false);
+
+  const [formMode, setFormMode] =
+    useState<"add" | "edit">("add");
+
+  const [
+    selectedCompany,
+    setSelectedCompany,
+  ] = useState<CompanyItem | null>(null);
+
+  const [
+    formLoading,
+    setFormLoading,
+  ] = useState(false);
+
+  const loadData = useCallback(
+    async () => {
+      setLoading(true);
+
+      try {
+        const sort = sortModel[0];
+
+        const data =
+          await getCompaniesApi({
+            page:
+              paginationModel.page + 1,
+
+            limit:
+              paginationModel.pageSize,
+
+            sortBy:
+              sort?.field ||
+              "createdAt",
+
+            sortOrder: (
+              sort?.sort || "desc"
+            ) as "asc" | "desc",
+
+            keyword:
+              searchValues.keyword ||
+              undefined,
+
+            status:
+              activeStatus ||
+              undefined,
+          });
+
+        setRows(data.items);
+        setRowCount(data.total);
+      } catch (error) {
+        await dialog.error({
+          title: "Lỗi tải dữ liệu",
+          message:
+            getApiErrorMessage(error),
+        });
+      } finally {
+        setLoading(false);
+      }
+    },
+    [
+      activeStatus,
+      dialog,
+      paginationModel.page,
+      paginationModel.pageSize,
+      searchValues.keyword,
+      sortModel,
+    ],
   );
-  const [formLoading, setFormLoading] = useState(false);
-
-  const loadData = useCallback(async () => {
-    setLoading(true);
-
-    try {
-      const sort = sortModel[0];
-
-      const data = await getCompaniesApi({
-        page: paginationModel.page + 1,
-        limit: paginationModel.pageSize,
-        sortBy: sort?.field || "createdAt",
-        sortOrder: (sort?.sort || "desc") as "asc" | "desc",
-        keyword: searchValues.keyword || undefined,
-        status: activeStatus || undefined,
-      });
-
-      setRows(data.items);
-      setRowCount(data.total);
-    } catch (error) {
-      await dialog.error({
-        title: "Lỗi tải dữ liệu",
-        message: getApiErrorMessage(error),
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [
-    activeStatus,
-    dialog,
-    paginationModel.page,
-    paginationModel.pageSize,
-    searchValues.keyword,
-    sortModel,
-  ]);
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, [loadData]);
 
-  const columns = useMemo<GridColDef<CompanyItem>[]>(
+  const openCreateDialog =
+    useCallback(() => {
+      setSelectedCompany(null);
+      setFormMode("add");
+      setFormOpen(true);
+    }, []);
+
+  const openEditDialog =
+    useCallback(
+      (company: CompanyItem) => {
+        setSelectedCompany(company);
+        setFormMode("edit");
+        setFormOpen(true);
+      },
+      [],
+    );
+
+  const closeFormDialog =
+    useCallback(() => {
+      if (formLoading) {
+        return;
+      }
+
+      setFormOpen(false);
+      setSelectedCompany(null);
+    }, [formLoading]);
+
+  const handleDelete = useCallback(
+    async (company: CompanyItem) => {
+      const ok = await dialog.confirm({
+        title: "Xác nhận xóa",
+        message: `Bạn có chắc chắn muốn xóa nhà xe "${company.name}" không?`,
+        confirmText: "Xóa",
+        cancelText: "Hủy",
+      });
+
+      if (!ok) {
+        return;
+      }
+
+      try {
+        await deleteCompanyApi(
+          company.id,
+        );
+
+        await loadData();
+
+        await dialog.info({
+          title: "Thành công",
+          message:
+            "Đã xóa nhà xe thành công.",
+        });
+      } catch (error) {
+        await dialog.error({
+          title: "Lỗi xóa nhà xe",
+          message:
+            getApiErrorMessage(error),
+        });
+      }
+    },
+    [dialog, loadData],
+  );
+
+  const columns = useMemo<
+    GridColDef<CompanyItem>[]
+  >(
     () => [
       {
         field: "code",
         headerName: "Mã nhà xe",
-        width: 140,
+        width: 150,
       },
       {
         field: "name",
@@ -153,36 +293,99 @@ export default function CompaniesPage() {
         minWidth: 220,
       },
       {
+        field: "companyType",
+        headerName: "Loại đơn vị",
+        width: 210,
+        renderCell: (params) => (
+          <Chip
+            size="small"
+            label={getCompanyTypeLabel(
+              params.row,
+            )}
+            color={
+              params.row.companyType ===
+              "OWNER_OPERATOR"
+                ? "info"
+                : "default"
+            }
+            variant="outlined"
+          />
+        ),
+      },
+      {
         field: "phone",
         headerName: "Số điện thoại",
         width: 150,
-        renderCell: (params) => params.value || "-",
+        renderCell: (params) =>
+          params.value || "-",
       },
       {
         field: "email",
         headerName: "Email",
         flex: 1,
         minWidth: 200,
-        renderCell: (params) => params.value || "-",
+        renderCell: (params) =>
+          params.value || "-",
       },
       {
         field: "representativeName",
         headerName: "Người đại diện",
         width: 180,
-        renderCell: (params) => params.value || "-",
+        renderCell: (params) =>
+          params.value || "-",
+      },
+      {
+        field: "businessRegistrationNumber",
+        headerName: "Số ĐKKD",
+        width: 170,
+        renderCell: (params) =>
+          params.value || "-",
+      },
+      {
+        field: "documents",
+        headerName: "Giấy ĐKKD",
+        width: 130,
+        sortable: false,
+        filterable: false,
+        renderCell: (params) => {
+          const count =
+            params.row
+              .businessRegistrationDocuments
+              ?.length || 0;
+
+          return (
+            <Chip
+              size="small"
+              label={`${count} file`}
+              color={
+                count > 0
+                  ? "success"
+                  : "error"
+              }
+              variant="outlined"
+            />
+          );
+        },
       },
       {
         field: "status",
         headerName: "Trạng thái",
         width: 160,
         renderCell: (params) => {
-          const status = String(params.value);
+          const status =
+            params.value as CompanyStatus;
 
           return (
             <Chip
               size="small"
-              label={getStatusLabel(status)}
-              color={status === "ACTIVE" ? "success" : "warning"}
+              label={getStatusLabel(
+                status,
+              )}
+              color={
+                status === "ACTIVE"
+                  ? "success"
+                  : "warning"
+              }
             />
           );
         },
@@ -192,9 +395,13 @@ export default function CompaniesPage() {
         headerName: "Ngày tạo",
         width: 180,
         renderCell: (params) => {
-          if (!params.value) return "-";
+          if (!params.value) {
+            return "-";
+          }
 
-          return new Date(String(params.value)).toLocaleString("vi-VN");
+          return new Date(
+            String(params.value),
+          ).toLocaleString("vi-VN");
         },
       },
       {
@@ -217,7 +424,10 @@ export default function CompaniesPage() {
               variant="outlined"
               onClick={(event) => {
                 event.stopPropagation();
-                openEditDialog(params.row);
+
+                openEditDialog(
+                  params.row,
+                );
               }}
             >
               Sửa
@@ -229,7 +439,10 @@ export default function CompaniesPage() {
               color="error"
               onClick={(event) => {
                 event.stopPropagation();
-                handleDelete(params.row);
+
+                void handleDelete(
+                  params.row,
+                );
               }}
             >
               Xóa
@@ -238,151 +451,238 @@ export default function CompaniesPage() {
         ),
       },
     ],
-    []
+    [
+      handleDelete,
+      openEditDialog,
+    ],
   );
 
   function handleTabChange(
     _event: React.SyntheticEvent,
-    value: CompanyStatus | ""
+    value: CompanyStatus | "",
   ) {
     setActiveStatus(value);
 
-    setPaginationModel((prev) => ({
-      ...prev,
+    setPaginationModel((previous) => ({
+      ...previous,
       page: 0,
     }));
   }
 
-  const handleSearch: SubmitHandler<CompanySearchForm> = (values) => {
-    setSearchValues(values);
+  const handleSearch: SubmitHandler<
+    CompanySearchForm
+  > = (values) => {
+    setSearchValues({
+      keyword:
+        values.keyword.trim(),
+    });
 
-    setPaginationModel((prev) => ({
-      ...prev,
+    setPaginationModel((previous) => ({
+      ...previous,
       page: 0,
     }));
   };
 
   function handleResetSearch() {
-    const emptyValues: CompanySearchForm = {
-      keyword: "",
-    };
+    const emptyValues: CompanySearchForm =
+      {
+        keyword: "",
+      };
 
     searchMethods.reset(emptyValues);
     setSearchValues(emptyValues);
 
-    setPaginationModel((prev) => ({
-      ...prev,
+    setPaginationModel((previous) => ({
+      ...previous,
       page: 0,
     }));
   }
 
-  function openCreateDialog() {
-    setSelectedCompany(null);
-    setFormMode("add");
-    setFormOpen(true);
-  }
+  const handleSubmitCompanyForm:
+    SubmitHandler<CompanyFormValues> =
+    async (values) => {
+      setFormLoading(true);
 
-  function openEditDialog(company: CompanyItem) {
-    setSelectedCompany(company);
-    setFormMode("edit");
-    setFormOpen(true);
-  }
+      try {
+        if (
+          values
+            .businessRegistrationDocuments
+            .length === 0
+        ) {
+          throw new Error(
+            "Vui lòng tải ít nhất một file giấy đăng ký kinh doanh",
+          );
+        }
 
-  async function handleDelete(company: CompanyItem) {
-    const ok = await dialog.confirm({
-      title: "Xác nhận xóa",
-      message: `Bạn có chắc chắn muốn xóa nhà xe "${company.name}" không?`,
-      confirmText: "Xóa",
-      cancelText: "Hủy",
-    });
+        if (formMode === "add") {
+          const payload:
+            CreateCompanyPayload = {
+            code: values.code
+              .trim()
+              .toUpperCase(),
 
-    if (!ok) return;
+            name: values.name.trim(),
 
-    try {
-      await deleteCompanyApi(company.id);
+            phone:
+              values.phone.trim() ||
+              undefined,
 
-      await dialog.info({
-        title: "Thành công",
-        message: "Đã xóa nhà xe thành công.",
-      });
+            email:
+              values.email
+                .trim()
+                .toLowerCase() ||
+              undefined,
 
-      loadData();
-    } catch (error) {
-      await dialog.error({
-        title: "Lỗi xóa nhà xe",
-        message: getApiErrorMessage(error),
-      });
-    }
-  }
+            taxCode:
+              values.taxCode.trim() ||
+              undefined,
 
-  const handleSubmitCompanyForm: SubmitHandler<CompanyFormValues> = async (
-    values
-  ) => {
-    setFormLoading(true);
+            representativeName:
+              values.representativeName.trim() ||
+              undefined,
 
-    try {
-      if (formMode === "add") {
-        const payload: CreateCompanyPayload = {
-          code: values.code,
-          name: values.name,
-          phone: values.phone || undefined,
-          email: values.email || undefined,
-          taxCode: values.taxCode || undefined,
-          representativeName: values.representativeName || undefined,
-          address: values.address || undefined,
-          status: values.status,
-          note: values.note || undefined,
-        };
+            address:
+              values.address.trim() ||
+              undefined,
 
-        await createCompanyApi(payload);
-      } else if (selectedCompany) {
-        const payload: UpdateCompanyPayload = {
-          code: values.code,
-          name: values.name,
-          phone: values.phone || undefined,
-          email: values.email || undefined,
-          taxCode: values.taxCode || undefined,
-          representativeName: values.representativeName || undefined,
-          address: values.address || undefined,
-          status: values.status,
-          note: values.note || undefined,
-        };
+            status: values.status,
 
-        await updateCompanyApi(selectedCompany.id, payload);
+            note:
+              values.note.trim() ||
+              undefined,
+
+            businessRegistrationNumber:
+              values.businessRegistrationNumber.trim(),
+
+            businessRegistrationIssuedDate:
+              values.businessRegistrationIssuedDate ||
+              undefined,
+
+            businessRegistrationIssuedPlace:
+              values.businessRegistrationIssuedPlace.trim(),
+
+            businessRegistrationDocuments:
+              values.businessRegistrationDocuments,
+          };
+
+          await createCompanyApi(
+            payload,
+          );
+        } else {
+          if (!selectedCompany) {
+            throw new Error(
+              "Không xác định được nhà xe cần cập nhật",
+            );
+          }
+
+          const payload:
+            UpdateCompanyPayload = {
+            name: values.name.trim(),
+
+            phone:
+              values.phone.trim() ||
+              undefined,
+
+            email:
+              values.email
+                .trim()
+                .toLowerCase() ||
+              undefined,
+
+            taxCode:
+              values.taxCode.trim() ||
+              undefined,
+
+            representativeName:
+              values.representativeName.trim() ||
+              undefined,
+
+            address:
+              values.address.trim() ||
+              undefined,
+
+            status: values.status,
+
+            note:
+              values.note.trim() ||
+              undefined,
+
+            /*
+             * Các trường trước đây bị thiếu
+             * trong payload cập nhật.
+             */
+            businessRegistrationNumber:
+              values.businessRegistrationNumber.trim(),
+
+            businessRegistrationIssuedDate:
+              values.businessRegistrationIssuedDate ||
+              undefined,
+
+            businessRegistrationIssuedPlace:
+              values.businessRegistrationIssuedPlace.trim(),
+
+            businessRegistrationDocuments:
+              values.businessRegistrationDocuments,
+          };
+
+          if (
+            selectedCompany.companyType !==
+            "OWNER_OPERATOR"
+          ) {
+            payload.code = values.code
+              .trim()
+              .toUpperCase();
+          }
+
+          await updateCompanyApi(
+            selectedCompany.id,
+            payload,
+          );
+        }
+
+        setFormOpen(false);
+        setSelectedCompany(null);
+
+        await loadData();
+
+        await dialog.info({
+          title: "Thành công",
+          message:
+            formMode === "add"
+              ? "Tạo nhà xe thành công."
+              : "Cập nhật nhà xe và giấy đăng ký kinh doanh thành công.",
+        });
+      } catch (error) {
+        await dialog.error({
+          title: "Lỗi lưu dữ liệu",
+          message:
+            getApiErrorMessage(error),
+        });
+      } finally {
+        setFormLoading(false);
       }
-
-      setFormOpen(false);
-
-      await dialog.info({
-        title: "Thành công",
-        message:
-          formMode === "add"
-            ? "Tạo nhà xe thành công."
-            : "Cập nhật nhà xe thành công.",
-      });
-
-      loadData();
-    } catch (error) {
-      await dialog.error({
-        title: "Lỗi lưu dữ liệu",
-        message: getApiErrorMessage(error),
-      });
-    } finally {
-      setFormLoading(false);
-    }
-  };
+    };
 
   return (
     <AdminLayout>
       <Box>
         <Box sx={{ mb: 2 }}>
-          <Typography variant="h5" sx={{ fontWeight: 900 }}>
+          <Typography
+            variant="h5"
+            sx={{ fontWeight: 900 }}
+          >
             Quản lý nhà xe
           </Typography>
 
-          <Typography sx={{ color: "text.secondary", mt: 0.75 }}>
-            Quản lý thông tin nhà xe, mã nhà xe, liên hệ và trạng thái hoạt
-            động.
+          <Typography
+            sx={{
+              color: "text.secondary",
+              mt: 0.75,
+            }}
+          >
+            Quản lý thông tin nhà xe,
+            giấy đăng ký kinh doanh,
+            liên hệ và trạng thái hoạt động.
           </Typography>
         </Box>
 
@@ -404,7 +704,9 @@ export default function CompaniesPage() {
           >
             {statusTabs.map((tab) => (
               <Tab
-                key={tab.value || "all"}
+                key={
+                  tab.value || "all"
+                }
                 value={tab.value}
                 label={tab.label}
               />
@@ -412,25 +714,43 @@ export default function CompaniesPage() {
           </Tabs>
         </Box>
 
-        <HDataTable<CompanyItem, CompanySearchForm>
+        <HDataTable<
+          CompanyItem,
+          CompanySearchForm
+        >
           title="Danh sách nhà xe"
           description="Tìm kiếm và quản lý hồ sơ nhà xe trong hệ thống."
           rows={rows}
           columns={columns}
           rowCount={rowCount}
           loading={loading}
-          paginationModel={paginationModel}
-          onPaginationModelChange={setPaginationModel}
+          paginationModel={
+            paginationModel
+          }
+          onPaginationModelChange={
+            setPaginationModel
+          }
           sortModel={sortModel}
-          onSortModelChange={setSortModel}
-          searchMethods={searchMethods}
+          onSortModelChange={
+            setSortModel
+          }
+          searchMethods={
+            searchMethods
+          }
           onSearch={handleSearch}
-          onResetSearch={handleResetSearch}
+          onResetSearch={
+            handleResetSearch
+          }
           onRefresh={loadData}
           minHeight={240}
           maxHeight={420}
           actions={
-            <Button variant="contained" onClick={openCreateDialog}>
+            <Button
+              variant="contained"
+              onClick={
+                openCreateDialog
+              }
+            >
               Thêm nhà xe
             </Button>
           }
@@ -445,10 +765,14 @@ export default function CompaniesPage() {
         <CompanyFormDialog
           open={formOpen}
           mode={formMode}
-          initialValues={selectedCompany}
+          initialValues={
+            selectedCompany
+          }
           loading={formLoading}
-          onClose={() => setFormOpen(false)}
-          onSubmit={handleSubmitCompanyForm}
+          onClose={closeFormDialog}
+          onSubmit={
+            handleSubmitCompanyForm
+          }
         />
       </Box>
     </AdminLayout>
